@@ -1,0 +1,124 @@
+@import './Formatting.css';
+
+.sidebar {
+  background-color: var(--container);
+  transition: width 0.3s ease;
+  height: calc(100vh - 62.5px);
+  overflow: hidden;
+  white-space: nowrap;
+  position: absolute;
+  z-index: 9999;
+}
+
+.sidebar.open {
+  width: 250px;
+}
+
+.sidebar.closed {
+  width: 0;
+}
+
+.nav-list {
+  list-style: none;
+  padding: 20px;
+}
+
+.nav-link {
+  text-decoration: none;
+  color: var(--text-color);
+  font-size: 1.1rem;
+  display: block;
+  width: 100%;
+  padding: 5px 0;
+}
+
+.nav-btn-active{
+  background-color: var(--selected);
+  color: white;
+  text-decoration: none;
+  font-size: 1.1rem;
+  width: 100%;
+  display: block;
+  padding: 5px 0;
+}
+
+.nav-item {
+  margin-bottom: 15px;
+  cursor: pointer;
+}
+
+.app-bar {
+  height: 60px;
+  display: flex;
+  align-items: center;
+  padding: 0 20px;
+  background-color: var(--container);
+  gap: 20px;
+  z-index: 100px;
+  margin: 0;
+}
+
+.toggle-btn {
+  font-size: 1.5rem;
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--text-color);
+}
+
+.page-title {
+  color: var(--text-color);
+  margin: 0;
+  font-size: 1.5rem;
+  font-weight: 600;
+}
+
+.top-bar {
+  height: 60px;
+  display: flex;
+  align-items: center;
+  overflow-x: auto;
+  gap: 8px;
+  scrollbar-width: thin;
+  padding: 0 20px;
+  background-color: var(--container);
+  gap: 20px;
+  z-index: 100px;
+  margin: 0;
+}
+
+.top-bar-btn {
+  text-decoration: none;
+  flex: 0 0 auto;
+  color: var(--text-color);
+  font-size: 1.1rem;
+  display: block;
+  padding: 5px 0;
+}
+
+.top-btn-active{
+  background-color: var(--selected);
+  color: white;
+  text-decoration: none;
+  font-size: 1.1rem;
+  display: block;
+  padding: 5px 0;
+}
+
+.bottom-bar {
+  height: 60px;
+  display: flex;
+  align-items: center;
+  overflow-x: auto;
+  gap: 8px;
+  scrollbar-width: thin;
+  padding: 0 20px;
+  background-color: var(--container);
+  gap: 20px;
+  z-index: 100px;
+  margin: 0;
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+}

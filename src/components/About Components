@@ -1,0 +1,13 @@
+Bars.tsx contains all the bars(App bar, side bar, etc)
+edit that one to edit all app bar for each page
+
+formating css is there because you can change the font size and change it to dark mode and light mode
+to use this
+if you are making a new css, add @import './Formatting.css';
+then to use the variables in the formatting, add var(--bg-color)
+example:
+background-color: var(--bg-color);
+
+
+you can also change the values of these attribute in Formatting css
+if you don't like the color
