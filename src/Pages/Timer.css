@@ -1,0 +1,105 @@
+.timer-page-container {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  background-color: var(--bg-color); 
+}
+
+.timer-wrapper {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  margin-top: 50px;
+  background: var(--container);
+  padding: 40px;
+  border-radius: 20px;
+  box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+  max-width: 500px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.task-name {
+  font-size: 1.5rem;
+  color: var(--text-color);
+  margin-bottom: 20px;
+  font-weight: 500;
+}
+
+.timer-display {
+  font-size: 5rem;
+  font-weight: 700;
+  color: var(--selected);
+  letter-spacing: 2px;
+  margin-bottom: 30px;
+}
+
+.timer-controls {
+  display: flex;
+  gap: 15px;
+  margin-bottom: 40px;
+}
+
+.control-btn {
+  padding: 12px 30px;
+  font-size: 1.1rem;
+  font-weight: 600;
+  border: none;
+  border-radius: 10px;
+  cursor: pointer;
+  font-family: inherit;
+  transition: opacity 0.2s;
+}
+
+.control-btn:hover {
+  opacity: 0.8;
+}
+
+.play-pause {
+  background-color: var(--selected);
+  color: white;
+}
+
+.reset {
+  background-color: transparent;
+  color: var(--text-color);
+  border: 1px solid var(--text-color);
+}
+
+.presets-container {
+  width: 100%;
+  text-align: center;
+}
+
+.presets-container p {
+  color: var(--text-color);
+  opacity: 0.7;
+  margin-bottom: 15px;
+  font-size: 0.9rem;
+}
+
+.preset-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  justify-content: center;
+}
+
+.preset-buttons button {
+  padding: 8px 15px;
+  background-color: transparent;
+  border: 1px solid var(--text-color);
+  border-radius: 20px;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 0.9rem;
+  color: var(--text-color);
+  transition: all 0.2s;
+}
+
+.preset-buttons button:hover {
+  background-color: var(--selected);
+  color: white;
+  border-color: var(--selected);
+}
