@@ -3,15 +3,22 @@ import { SideBar, AppBar, BottomBar } from "../components/Bar";
 import { auth, db } from "../config/firebase";
 import { onAuthStateChanged } from "firebase/auth";
 import { useNavigate } from "react-router-dom";
+<<<<<<< Updated upstream
 import '../components/Formatting.css';
 import './Home.css';
+=======
+import "../style.css";
+>>>>>>> Stashed changes
 import { collection, doc, getDoc, getDocs, limit, orderBy, query } from "firebase/firestore";
+import { Timer, BookOpen, MapPin, CheckSquare, ChevronRight, Flame, Zap } from "lucide-react";
 
 function Home() {
-  const [isOpen, setIsOpen] = useState(true);
-  const [BotSub, setBotSub] = useState<any[]>([]);
+  const [isOpen, setIsOpen] = useState(false);
+  const [botSub, setBotSub] = useState<any[]>([]);
   const [streak, setStreak] = useState(0);
+  const [username, setUsername] = useState("");
 
+<<<<<<< Updated upstream
   // Log out navigation
   const navigate = useNavigate();
   useEffect(() => {
@@ -19,15 +26,26 @@ function Home() {
       if (!user?.email) {
         navigate("/");
       }
+=======
+  const navigate = useNavigate();
+  useEffect(() => {
+    const removeListener = onAuthStateChanged(auth, (user) => {
+      if (!user?.email) navigate("/");
+      else setUsername(user.displayName?.split(" ")[0] ?? "");
+>>>>>>> Stashed changes
     });
     return () => removeListener();
   }, [navigate]);
 
+<<<<<<< Updated upstream
   // Retrieve subjects needing attention
+=======
+>>>>>>> Stashed changes
   const getBotSubjects = async () => {
     try {
       const uid = auth.currentUser?.uid;
       if (!uid) return;
+<<<<<<< Updated upstream
       const subjectsRef = collection(db, "users", uid, "Subjects");
       const q = query(subjectsRef, orderBy("TotalStudytime", "asc"), limit(5));
       const querySnapshot = await getDocs(q);
@@ -53,27 +71,49 @@ function Home() {
       time = seconds + ' seconds';
     }
     return time;
+=======
+      const q = query(
+        collection(db, "users", uid, "Subjects"),
+        orderBy("TotalStudytime", "asc"),
+        limit(5)
+      );
+      const snap = await getDocs(q);
+      return snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  function formatTime(seconds: number) {
+    if (seconds >= 86400) return Math.trunc(seconds / 86400) + " days ago";
+    if (seconds >= 3600)  return Math.trunc(seconds / 3600)  + " hours ago";
+    if (seconds >= 60)    return Math.trunc(seconds / 60)    + " minutes ago";
+    return seconds + " seconds ago";
+>>>>>>> Stashed changes
   }
 
   async function retrieveStreak() {
     const uid = auth.currentUser?.uid;
+<<<<<<< Updated upstream
     if (!uid) return;
     
     const userRef = doc(db, "users", uid);
     const snapshot = await getDoc(userRef);
     const user = snapshot.data();
     return user?.Streak ?? 0;
+=======
+    if (!uid) return 0;
+    const snap = await getDoc(doc(db, "users", uid));
+    return snap.data()?.Streak ?? 0;
+>>>>>>> Stashed changes
   }
 
   useEffect(() => {
-    const loadStreak = async () => {
-      const s = await retrieveStreak();
-      setStreak(s ?? 0);
-    };
-    loadStreak();
+    retrieveStreak().then((s) => setStreak(s ?? 0));
   }, []);
 
   useEffect(() => {
+<<<<<<< Updated upstream
     const loadData = async () => {
       const data = await getBotSubjects(); 
       if (data) setBotSub(data);
@@ -146,6 +186,104 @@ function Home() {
       </main>
 
       <BottomBar/>
+=======
+    getBotSubjects().then((data) => { if (data) setBotSub(data); });
+  }, []);
+
+  const quickActions = [
+    { label: "Focus Timer", icon: <Timer size={26} />,   color: "qa-blue",   path: "/timer" },
+    { label: "Study Notes", icon: <BookOpen size={26} />, color: "qa-purple", path: "/study/notes" },
+    { label: "Find Spots",  icon: <MapPin size={26} />,   color: "qa-green",  path: "/location" },
+    { label: "Tasks",       icon: <CheckSquare size={26}/>,color: "qa-orange", path: "/checklist" },
+  ];
+
+  return (
+    <div className="app-layout">
+      <AppBar onToggle={() => setIsOpen(!isOpen)} title="Home" />
+      <SideBar 
+      isOpen={isOpen} 
+       onClose={() => setIsOpen(false)} 
+      />
+      <main className="page-content">
+        <div className="home-wrapper">
+
+          {/* ── Streak card ── */}
+          <div className="home-streak-card">
+            <div className="home-streak-top">
+              <div>
+                <p className="home-streak-label">Daily Streak</p>
+                <div className="home-streak-number">
+                  <span className="home-streak-count">{streak}</span>
+                  <span className="home-streak-unit">days</span>
+                </div>
+                <p className="home-streak-sub">
+                  {streak > 0 ? "Keep it up! You're doing great." : "Start your streak today!"}
+                </p>
+              </div>
+              <div className={`home-streak-badge ${streak > 0 ? "home-streak-badge-on" : ""}`}>
+                <Flame size={14} />
+                {streak > 0 ? "ON FIRE" : "START"}
+              </div>
+            </div>
+          </div>
+
+          {/* ── Quick Actions ── */}
+          <section className="home-section">
+            <h2 className="home-section-title">Quick Actions</h2>
+            <div className="home-qa-grid">
+              {quickActions.map((a) => (
+                <button
+                  key={a.label}
+                  className={`home-qa-card ${a.color}`}
+                  onClick={() => navigate(a.path)}
+                >
+                  <div className="home-qa-icon">{a.icon}</div>
+                  <span className="home-qa-label">{a.label}</span>
+                </button>
+              ))}
+            </div>
+          </section>
+
+          {/* ── Recent Activity (lowest study time = needs attention) ── */}
+          <section className="home-section">
+            <div className="home-section-header">
+              <h2 className="home-section-title">Needs Attention</h2>
+              <button className="home-view-all" onClick={() => navigate("/study/subjects")}>
+                View All
+              </button>
+            </div>
+            <div className="home-activity-list">
+              {botSub.length === 0 ? (
+                <div className="home-activity-empty">
+                  <Zap size={20} />
+                  <span>No subjects yet — add some to get started</span>
+                </div>
+              ) : (
+                botSub.map((item) => (
+                  <button
+                    key={item.id}
+                    className="home-activity-row"
+                    onClick={() => navigate("/study/subjects")}
+                  >
+                    <div className="home-activity-icon">
+                      <BookOpen size={16} />
+                    </div>
+                    <div className="home-activity-info">
+                      <p className="home-activity-name">{item.name}</p>
+                      <p className="home-activity-time">{formatTime(item.TotalStudytime)}</p>
+                    </div>
+                    <ChevronRight size={16} className="home-activity-chevron" />
+                  </button>
+                ))
+              )}
+            </div>
+          </section>
+
+        </div>
+      </main>
+
+      <BottomBar />
+>>>>>>> Stashed changes
     </div>
   );
 }

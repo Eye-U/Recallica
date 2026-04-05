@@ -6,6 +6,7 @@ import { useNavigate } from "react-router-dom";
 import './Timer.css'; 
 
 function Timer() {
+<<<<<<< Updated upstream
   const [isOpen, setIsOpen] = useState(true);
   const [timeLeft, setTimeLeft] = useState(25 * 60); 
   const [isActive, setIsActive] = useState(false);
@@ -93,6 +94,30 @@ function Timer() {
       <BottomBar/>
     </div>
   )
+=======
+  const [isOpen, setIsOpen] = useState(false);
+
+  const navigate = useNavigate();
+  useEffect(() => {
+    const removeListener = onAuthStateChanged(auth, (user) => {
+      if (!user?.email) navigate("/");
+    });
+    return () => removeListener();
+  }, [navigate]);
+
+  return (
+    <>
+      <AppBar onToggle={() => setIsOpen(o => !o)} title="Timer" />
+      <SideBar isOpen={isOpen} onClose={() => setIsOpen(false)} />
+
+      <main className="page-content">
+        {/* Timer content here */}
+      </main>
+
+      <BottomBar />
+    </>
+  );
+>>>>>>> Stashed changes
 }
 
 export default Timer;

@@ -58,3 +58,47 @@ body {
 .s5{
     font-size: calc(3rem * var(--font-scale));
 }
+
+/* ════════════════════════════════════════════════════════════════════════════════
+   SIDEBAR OVERRIDES — append to bottom of Formatting.css
+   These override old sidebar rules so the new slide-in sidebar works correctly
+   ════════════════════════════════════════════════════════════════════════════════ */
+
+.sidebar {
+  position: fixed !important;
+  top: 0 !important;
+  left: 0 !important;
+  height: 100vh !important;
+  width: 270px !important;
+  max-width: 270px !important;
+  background: var(--surface, #ffffff) !important;
+  box-shadow: 4px 0 24px rgba(0, 0, 0, 0.1) !important;
+  z-index: 400 !important;
+  display: flex !important;
+  flex-direction: column !important;
+  transform: translateX(-100%) !important;
+  transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1) !important;
+  border-right: 1px solid var(--gray-100, #f1f5f9) !important;
+  overflow: hidden !important;
+}
+
+
+.sidebar-backdrop {
+  position: fixed !important;
+  inset: 0 !important;
+  background: rgba(0, 0, 0, 0.35) !important;
+  z-index: 300 !important;
+  backdrop-filter: blur(2px) !important;
+}
+
+/* Fix height variables */
+:root {
+  --appbar-height: 56px;
+  --bottombar-height: 64px;
+}
+
+.page-content {
+  margin-top: 56px !important;
+  margin-bottom: 64px !important;
+  margin-left: 0 !important;
+}
