@@ -1,282 +1,273 @@
-import { useEffect, useState } from "react";
-import { SideBar, AppBar, BottomBar } from "../components/Bar";
-import { auth } from "../config/firebase";
-import { onAuthStateChanged } from "firebase/auth";
-import { useNavigate } from "react-router-dom";
-import '../style.css';
-import './Location.css';
-import {
-  MapPin, Star, Navigation, ChevronRight,
-  BookOpen, Coffee, Trees, Users,
-  Loader, Search, Filter, ChevronUp,
-  type LucideIcon,
-} from "lucide-react";
+import { useState, useEffect } from "react";
+import { AppBar, BottomBar, SideBar } from "../components/Bar";
+import { Search, Filter, Navigation, BookOpen, Coffee, TreePine, MapPin, Star } from "lucide-react";
+import { MapContainer, TileLayer, Marker, Popup, useMap } from "react-leaflet";
+import "leaflet/dist/leaflet.css";
+import L from "leaflet";
+import "./Location.css";
 
-/* ─── Icon map (string → component, avoids Illegal constructor) ──────────────── */
-const ICON_MAP: Record<string, LucideIcon> = {
-  BookOpen,
-  Coffee,
-  Trees,
-  Users,
-};
+// Fix for default Leaflet icon
+import markerIcon from "leaflet/dist/images/marker-icon.png";
+import markerShadow from "leaflet/dist/images/marker-shadow.png";
+let DefaultIcon = L.icon({
+  iconUrl: markerIcon,
+  shadowUrl: markerShadow,
+  iconSize: [25, 41],
+  iconAnchor: [12, 41],
+});
+L.Marker.prototype.options.icon = DefaultIcon;
 
-/* ─── Mock data ──────────────────────────────────────────────────────────────── */
-const NEARBY_PLACES = [
-  {
-    id: 1, name: "City Central Library", type: "Library",
-    distance: "0.2 mi", rating: 4.8, iconName: "BookOpen",
-    color: "#2563eb", bg: "#eff6ff",
-    tags: ["Quiet", "WiFi", "24hr"], open: true, seats: 42,
-  },
-  {
-    id: 2, name: "Bean & Book Cafe", type: "Cafe",
-    distance: "0.5 mi", rating: 4.5, iconName: "Coffee",
-    color: "#ea580c", bg: "#fff7ed",
-    tags: ["Coffee", "Cozy", "Music"], open: true, seats: 18,
-  },
-  {
-    id: 3, name: "Sunset Park", type: "Park",
-    distance: "1.2 mi", rating: 4.2, iconName: "Trees",
-    color: "#16a34a", bg: "#f0fdf4",
-    tags: ["Outdoor", "Quiet"], open: true, seats: 0,
-  },
-  {
-    id: 4, name: "Northside Study Hub", type: "Study Room",
-    distance: "1.8 mi", rating: 4.7, iconName: "Users",
-    color: "#7c3aed", bg: "#f5f3ff",
-    tags: ["Group", "WiFi", "Whiteboard"], open: false, seats: 26,
-  },
-];
+// Custom Icon for the User's Location
+const userIcon = L.divIcon({
+  className: "loc-user-marker",
+  iconSize: [20, 20],
+  iconAnchor: [10, 10],
+});
 
-const FILTERS = ["All", "Library", "Cafe", "Park", "Study Room"];
-const MAP_PINS = [
-  { id: 1, x: 26, y: 34, active: false },
-  { id: 2, x: 59, y: 54, active: true },
-];
-
-/* ─── StarRating ─────────────────────────────────────────────────────────────── */
-function StarRating({ rating }: { rating: number }) {
-  return (
-    <span style={{ display: "flex", alignItems: "center", gap: 3 }}>
-      <Star size={11} fill="#f59e0b" color="#f59e0b" />
-      <span style={{ fontSize: 12, fontWeight: 700, color: "#f59e0b" }}>{rating}</span>
-    </span>
-  );
+// Helper to center the map programmatically
+function RecenterMap({ position }: { position: [number, number] }) {
+  const map = useMap();
+  useEffect(() => {
+    map.flyTo(position, 15);
+  }, [position, map]);
+  return null;
 }
 
-/* ─── PlaceCard ──────────────────────────────────────────────────────────────── */
-function PlaceCard({ place, index, onSelect, selected }: {
-  place: typeof NEARBY_PLACES[0];
-  index: number;
-  onSelect: (id: number) => void;
-  selected: boolean;
-}) {
-  const Icon = ICON_MAP[place.iconName];
-  return (
-    <button
-      className="loc-place-card"
-      data-selected={selected}
-      onClick={() => onSelect(place.id)}
-      style={{ animationDelay: `${index * 60}ms` }}
-    >
-      <div className="loc-place-icon" style={{ background: place.bg, color: place.color }}>
-        {Icon && <Icon size={20} strokeWidth={2} />}
-      </div>
-      <div className="loc-place-info">
-        <div className="loc-place-name">{place.name}</div>
-        <div className="loc-place-meta">
-          <span className="loc-place-type">{place.type}</span>
-          <span className="loc-place-dot">·</span>
-          <span className="loc-place-dist">{place.distance}</span>
-          {place.seats > 0 && (
-            <><span className="loc-place-dot">·</span>
-            <span className="loc-place-seats">{place.seats} seats</span></>
-          )}
-        </div>
-        <div className="loc-place-tags">
-          {place.tags.map(t => <span key={t} className="loc-tag">{t}</span>)}
-        </div>
-      </div>
-      <div className="loc-place-right">
-        <StarRating rating={place.rating} />
-        <span className={`loc-open-badge ${place.open ? "loc-open" : "loc-closed"}`}>
-          {place.open ? "Open" : "Closed"}
-        </span>
-        <ChevronRight size={14} color="var(--gray-300)" />
-      </div>
-    </button>
-  );
+// Math helper to calculate distance between two coordinates in miles
+function calculateDistance(lat1: number, lon1: number, lat2: number, lon2: number) {
+  const R = 3958.8; // Earth radius in miles
+  const dLat = (lat2 - lat1) * (Math.PI / 180);
+  const dLon = (lon2 - lon1) * (Math.PI / 180);
+  const a = 
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos(lat1 * (Math.PI / 180)) * Math.cos(lat2 * (Math.PI / 180)) * Math.sin(dLon / 2) * Math.sin(dLon / 2); 
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a)); 
+  return (R * c).toFixed(1);
 }
 
-/* ─── MapView ────────────────────────────────────────────────────────────────── */
-function MapView({ selectedPin, onPinClick }: {
-  selectedPin: number | null;
-  onPinClick: (id: number) => void;
-}) {
-  return (
-    <div className="loc-map">
-      <svg width="100%" height="100%" viewBox="0 0 400 340"
-        xmlns="http://www.w3.org/2000/svg"
-        style={{ position: "absolute", inset: 0 }}
-        preserveAspectRatio="xMidYMid slice"
-      >
-        <rect width="400" height="340" fill="#e8edf5" />
-        <rect x="0"   y="130" width="400" height="18" fill="#f5f7fa" />
-        <rect x="0"   y="230" width="400" height="14" fill="#f5f7fa" />
-        <rect x="140" y="0"   width="16"  height="340" fill="#f5f7fa" />
-        <rect x="260" y="0"   width="14"  height="340" fill="#f5f7fa" />
-        <rect x="60"  y="60"  width="12"  height="200" fill="#f5f7fa" />
-        <rect x="330" y="80"  width="10"  height="180" fill="#f5f7fa" />
-        <line x1="0" y1="139" x2="400" y2="139" stroke="#dde3ef" strokeWidth="1" strokeDasharray="12 8" />
-        <line x1="148" y1="0" x2="148" y2="340" stroke="#dde3ef" strokeWidth="1" strokeDasharray="12 8" />
-        <line x1="267" y1="0" x2="267" y2="340" stroke="#dde3ef" strokeWidth="1" strokeDasharray="12 8" />
-        {([
-          [20,20,110,100],[170,20,80,100],[270,20,110,100],
-          [170,160,70,60],[270,160,110,60],
-          [20,255,100,70],[170,255,70,70],[270,255,110,70],
-        ] as [number,number,number,number][]).map(([x,y,w,h],i) => (
-          <rect key={i} x={x} y={y} width={w} height={h} rx="3" fill="#dde3ef" opacity="0.6" />
-        ))}
-        <rect x="20" y="160" width="100" height="60" rx="3" fill="#c8e6c9" opacity="0.7" />
-        <text x="70" y="195" textAnchor="middle" fontSize="9" fill="#4caf50" fontFamily="sans-serif">Park</text>
-        <ellipse cx="350" cy="290" rx="55" ry="40" fill="#b3d4f5" opacity="0.5" />
-        <text x="225" y="72" textAnchor="middle" fontSize="8" fill="#9ca3af" fontFamily="sans-serif">NORTHSIDE</text>
-        <text x="70"  y="72" textAnchor="middle" fontSize="8" fill="#9ca3af" fontFamily="sans-serif">WESTVIEW</text>
-        <text x="200" y="143" fontSize="7" fill="#9ca3af" fontFamily="sans-serif">MAIN ST</text>
-      </svg>
-
-      {MAP_PINS.map(pin => {
-        const isActive = pin.active || selectedPin === pin.id;
-        return (
-          <button key={pin.id} className={`loc-pin ${isActive ? "loc-pin-active" : ""}`}
-            style={{ left: `${pin.x}%`, top: `${pin.y}%` }}
-            onClick={() => onPinClick(pin.id)} aria-label={`Pin ${pin.id}`}
-          >
-            <MapPin size={isActive ? 26 : 20} strokeWidth={2.2} fill="currentColor" />
-            {isActive && <span className="loc-pin-ring" />}
-          </button>
-        );
-      })}
-
-      <div className="loc-search-bar">
-        <Search size={15} color="var(--gray-400)" />
-        <span className="loc-search-placeholder">Search study spots…</span>
-        <button className="loc-filter-btn" aria-label="Filters"><Filter size={14} /></button>
-      </div>
-
-      <button className="loc-locate-btn" aria-label="My location">
-        <Navigation size={17} strokeWidth={2.2} />
-      </button>
-    </div>
-  );
-}
-
-/* ─── Bottom Sheet ───────────────────────────────────────────────────────────── */
-function BottomSheet({ children, expanded, onToggle }: {
-  children: React.ReactNode;
-  expanded: boolean;
-  onToggle: () => void;
-}) {
-  return (
-    <div className={`loc-sheet ${expanded ? "loc-sheet-expanded" : ""}`}>
-      <button className="loc-sheet-handle-wrap" onClick={onToggle} aria-label="Toggle sheet">
-        <div className="loc-sheet-handle" />
-        <ChevronUp size={16} color="var(--gray-400)"
-          style={{ transform: expanded ? "rotate(180deg)" : "rotate(0deg)", transition: "transform 0.3s ease" }}
-        />
-      </button>
-      {children}
-    </div>
-  );
-}
-
-/* ─── Main Page ──────────────────────────────────────────────────────────────── */
-function Location() {
+function Locations() {
   const [isOpen, setIsOpen] = useState(false);
   const [activeFilter, setActiveFilter] = useState("All");
-  const [selectedPlace, setSelectedPlace] = useState<number | null>(null);
-  const [sheetExpanded, setSheetExpanded] = useState(false);
-  const [locating, setLocating] = useState(true);
-  const navigate = useNavigate();
+  const [searchQuery, setSearchQuery] = useState("");
+  // Defaulting to Rodriguez, PH for context, will update if geolocation is allowed
+  const [userPos, setUserPos] = useState<[number, number]>([14.73, 121.13]); 
+  
+  // New States for Real Data
+  const [places, setPlaces] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
 
+// 1. Get User Location on Load (UPDATED FOR HIGH ACCURACY)
   useEffect(() => {
-    const unsub = onAuthStateChanged(auth, (user) => {
-      if (!user?.email) navigate("/");
-    });
-    return () => unsub();
-  }, [navigate]);
-
-  useEffect(() => {
-    const t = setTimeout(() => setLocating(false), 1200);
-    return () => clearTimeout(t);
+    if ("geolocation" in navigator) {
+      navigator.geolocation.getCurrentPosition(
+        (pos) => {
+          setUserPos([pos.coords.latitude, pos.coords.longitude]);
+        },
+        (error) => {
+          console.warn("Could not get accurate location:", error.message);
+        },
+        { 
+          enableHighAccuracy: true, // Forces GPS instead of IP guessing
+          timeout: 10000, 
+          maximumAge: 0 
+        }
+      );
+    }
   }, []);
 
-  const filtered =
-    activeFilter === "All"
-      ? NEARBY_PLACES
-      : NEARBY_PLACES.filter(p => p.type === activeFilter);
+  // 2. Fetch Real Places from Overpass API
+  useEffect(() => {
+    const fetchPlaces = async () => {
+      setIsLoading(true);
+      const [lat, lon] = userPos;
+      const radius = 3000; // Search within 3000 meters (approx 1.8 miles)
+
+      // Map our UI filters to OpenStreetMap Tags
+      let queryTags = "";
+      if (activeFilter === "Cafe") queryTags = '["amenity"="cafe"]';
+      else if (activeFilter === "Library") queryTags = '["amenity"="library"]';
+      else if (activeFilter === "Park") queryTags = '["leisure"="park"]';
+      else if (activeFilter === "Study Room") queryTags = '["amenity"="university"]'; // Fallback for study rooms
+      else queryTags = '["amenity"~"cafe|library"]["leisure"~"park"]'; // All
+
+      // Construct the Overpass QL Query
+      const query = `
+        [out:json][timeout:25];
+        (
+          node${queryTags}(around:${radius},${lat},${lon});
+          way${queryTags}(around:${radius},${lat},${lon});
+        );
+        out center;
+      `;
+
+      try {
+        const response = await fetch("https://overpass-api.de/api/interpreter", {
+          method: "POST",
+          body: query
+        });
+        const data = await response.json();
+
+        // Format the raw OSM data into our UI structure
+        const formattedPlaces = data.elements.map((el: any, index: number) => {
+          const placeLat = el.lat || el.center.lat;
+          const placeLon = el.lon || el.center.lon;
+          
+          // Determine type based on OSM tags
+          let type = "Place";
+          let tags = ["WIFI"];
+          if (el.tags?.amenity === "cafe") { type = "Cafe"; tags = ["Coffee", "WIFI"]; }
+          if (el.tags?.amenity === "library") { type = "Library"; tags = ["Quiet", "Books"]; }
+          if (el.tags?.leisure === "park") { type = "Park"; tags = ["Nature", "Outdoors"]; }
+
+          return {
+            id: el.id,
+            name: el.tags?.name || `Unnamed ${type}`,
+            type: type,
+            distance: `${calculateDistance(lat, lon, placeLat, placeLon)} mi`,
+            position: [placeLat, placeLon],
+            // Fake data for UI aesthetics (OSM doesn't track these)
+            seats: `${Math.floor(Math.random() * 30) + 10} seats`,
+            rating: (Math.random() * (5.0 - 4.0) + 4.0).toFixed(1),
+            status: "OPEN",
+            tags: tags
+          };
+        });
+
+        // Remove places without names if you want a cleaner list
+        const cleanPlaces = formattedPlaces.filter((p: any) => !p.name.includes("Unnamed"));
+        setPlaces(cleanPlaces);
+
+      } catch (error) {
+        console.error("Error fetching places:", error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchPlaces();
+  }, [userPos, activeFilter]); // Re-run when location or filter changes
+
+  // 3. Local Search Filter
+  const filteredPlaces = places.filter(place => 
+    place.name.toLowerCase().includes(searchQuery.toLowerCase())
+  );
 
   return (
-    <>
-      <AppBar onToggle={() => setIsOpen(o => !o)} title="Study Spots" />
+    <div className="locations-page-container">
+      <AppBar onToggle={() => setIsOpen(!isOpen)} title="Study Spots" />
       <SideBar isOpen={isOpen} onClose={() => setIsOpen(false)} />
 
-      <div className="loc-wrapper">
-        <div className="loc-map-area">
-          {locating ? (
-            <div className="loc-map-loading">
-              <Loader size={28} className="loc-spin" color="var(--blue-600)" />
-              <span>Finding your location…</span>
-            </div>
-          ) : (
-            <MapView
-              selectedPin={selectedPlace}
-              onPinClick={id => { setSelectedPlace(id); setSheetExpanded(false); }}
-            />
-          )}
-        </div>
+      <main className="loc-main-content">
+        <div className="loc-map-container">
+          <MapContainer center={userPos} zoom={15} zoomControl={false} style={{ height: "100%", width: "100%" }}>
+            <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
+            <RecenterMap position={userPos} />
+            
+            {/* THE NEW USER LOCATION MARKER */}
+            <Marker position={userPos} icon={userIcon} zIndexOffset={1000}>
+              <Popup>
+                <strong>You are here</strong>
+              </Popup>
+            </Marker>
 
-        <BottomSheet expanded={sheetExpanded} onToggle={() => setSheetExpanded(e => !e)}>
-          <div className="loc-sheet-header">
-            <div>
-              <p className="loc-sheet-title">Nearby Places</p>
-              <p className="loc-sheet-sub">{filtered.length} spots found near you</p>
-            </div>
-            <div className="loc-live-badge">
-              <span className="loc-live-dot" />
-              Live
+            {/* Render Real Markers for Places */}
+            {filteredPlaces.map(place => (
+              <Marker key={place.id} position={place.position as [number, number]}>
+                <Popup>
+                  <strong>{place.name}</strong> <br /> {place.type}
+                </Popup>
+              </Marker>
+            ))}
+          </MapContainer>
+
+          <div className="loc-search-overlay">
+            <div className="loc-search-bar">
+              <Search size={20} color="#6c757d" />
+              <input 
+                type="text" 
+                placeholder="Search study spots..." 
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+              />
+              <button className="loc-filter-icon"><Filter size={18} /></button>
             </div>
           </div>
 
-          <div className="loc-filters">
-            {FILTERS.map(f => (
-              <button key={f}
-                className={`loc-filter-pill ${activeFilter === f ? "loc-filter-active" : ""}`}
+          <button className="loc-recenter-btn" onClick={() => {
+            if ("geolocation" in navigator) {
+              navigator.geolocation.getCurrentPosition((pos) => {
+                setUserPos([pos.coords.latitude, pos.coords.longitude]);
+              });
+            }
+          }}>
+            <Navigation size={20} color="#2563eb" />
+          </button>
+        </div>
+
+        <div className="loc-bottom-sheet">
+          <div className="loc-sheet-handle"></div>
+          <div className="loc-sheet-header">
+            <div>
+              <h2 className="loc-sheet-title">Nearby Places</h2>
+              <p className="loc-sheet-subtitle">
+                {isLoading ? "Searching area..." : `${filteredPlaces.length} spots found near you`}
+              </p>
+            </div>
+            <div className="loc-live-badge"><span className="loc-live-dot"></span>Live</div>
+          </div>
+
+          <div className="loc-filters-scroll">
+            {["All", "Library", "Cafe", "Park"].map(f => (
+              <button 
+                key={f} 
+                className={`loc-filter-pill ${activeFilter === f ? "active" : ""}`} 
                 onClick={() => setActiveFilter(f)}
-              >{f}</button>
+              >
+                {f}
+              </button>
             ))}
           </div>
 
-          <div className="loc-place-list">
-            {filtered.length === 0 ? (
-              <div className="loc-empty">
-                <MapPin size={32} color="var(--gray-300)" />
-                <p>No spots found for this filter.</p>
-              </div>
-            ) : (
-              filtered.map((place, i) => (
-                <PlaceCard key={place.id} place={place} index={i} selected={selectedPlace === place.id}
-                  onSelect={id => { setSelectedPlace(id); setSheetExpanded(false); }}
-                />
-              ))
+          <div className="loc-places-list">
+            {isLoading && <p className="loc-no-results">Fetching live satellite data...</p>}
+            
+            {!isLoading && filteredPlaces.length === 0 && (
+              <p className="loc-no-results">No places found. Try a different filter or zooming out.</p>
             )}
-          </div>
-        </BottomSheet>
-      </div>
 
+            {!isLoading && filteredPlaces.map(place => (
+              <div key={place.id} className="loc-place-card">
+                <div className="loc-place-icon">
+                  {place.type === "Library" && <BookOpen size={24} color="#2563eb" />}
+                  {place.type === "Cafe" && <Coffee size={24} color="#d97706" />}
+                  {place.type === "Park" && <TreePine size={24} color="#16a34a" />}
+                  {place.type === "Place" && <MapPin size={24} color="#9333ea" />}
+                </div>
+                <div className="loc-place-details">
+                  <div className="loc-place-name-row">
+                    <h3>{place.name}</h3>
+                    <div className="loc-rating"><Star size={14} fill="#fbbf24" stroke="none" /> {place.rating}</div>
+                  </div>
+                  <div className="loc-place-meta">
+                    <span className="loc-meta-type">{place.type.toUpperCase()}</span> 
+                    <span className="loc-meta-dot">•</span> <span>{place.distance}</span> 
+                    <span className="loc-meta-dot">•</span> <span>{place.seats}</span>
+                    <span className={`loc-status ${place.status.toLowerCase()}`}>{place.status}</span>
+                  </div>
+                  <div className="loc-place-tags">
+                    {place.tags.map((tag: string) => (
+                      <span key={tag} className="loc-tag">{tag}</span>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </main>
       <BottomBar />
-    </>
+    </div>
   );
 }
 
-export default Location;
+export default Locations;
