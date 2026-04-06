@@ -297,3 +297,21 @@
   border-radius: 50%;
   box-shadow: 0 0 10px rgba(59, 130, 246, 0.6);
 }
+
+/* --- ACTIVE MARKER FIX --- */
+.loc-active-svg {
+  background: transparent !important;
+  border: none !important;
+}
+
+/* --- ACTIVE SELECTED CARD --- */
+.loc-place-card {
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.loc-place-card.active-card {
+  border-color: #2563eb;
+  background-color: #eff6ff;
+  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.1);
+}
