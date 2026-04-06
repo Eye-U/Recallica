@@ -1,0 +1,392 @@
+/* --- CHECKLIST PAGE BASE --- */
+.checklist-page-container {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  background-color: var(--bg-color);
+  font-family: inherit;
+}
+
+.checklist-page-container .main-content {
+  display: flex;
+  flex: 1;
+  padding: 80px 20px 90px 20px;
+  box-sizing: border-box;
+}
+
+/* --- LAYOUT --- */
+.checklist-page-container .cl-layout {
+  display: flex;
+  flex-direction: column;
+  align-items: center; 
+  width: 100%;
+  max-width: 600px;
+  margin: 0 auto;
+}
+
+.checklist-page-container .cl-calendar-aside {
+  width: 100%;
+  display: flex;
+  justify-content: center;
+}
+
+/* --- THE CARDS --- */
+.checklist-page-container .cl-calendar-card,
+.checklist-page-container .cl-tasks-section {
+  position: relative;
+  background: var(--container);
+  padding: 24px;
+  border-radius: 16px;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
+  width: 100%;
+  box-sizing: border-box;
+}
+
+/* --- CALENDAR SECTION SPECIFICS --- */
+.checklist-page-container .cl-calendar-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center; /* Centers the calendar perfectly inside the card */
+}
+
+.checklist-page-container .cl-calendar-label {
+  align-self: flex-start;
+  font-size: 0.85rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: #6c757d;
+  margin: 0 0 15px 0;
+}
+
+/* Reset react-datepicker to natural sizes to fix ovals */
+.checklist-page-container .react-datepicker {
+  font-family: inherit !important;
+  border: none !important;
+  background: transparent;
+  display: inline-block;
+}
+
+.checklist-page-container .react-datepicker__header {
+  background: transparent;
+  border-bottom: none;
+  padding-top: 0;
+}
+
+.checklist-page-container .react-datepicker__current-month,
+.checklist-page-container .react-datepicker__day-name {
+  color: var(--text-color);
+  font-weight: 600;
+}
+
+.checklist-page-container .react-datepicker__day {
+  color: var(--text-color);
+}
+
+/* Perfect Circles */
+.checklist-page-container .react-datepicker__day-name,
+.checklist-page-container .react-datepicker__day {
+  width: 2.5rem;
+  height: 2.5rem;
+  line-height: 2.5rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0.2rem; /* Natural spacing instead of stretching */
+  border-radius: 50% !important;
+}
+
+/* FIX: Force selected day */
+.checklist-page-container .react-datepicker .react-datepicker__day--selected,
+.checklist-page-container .react-datepicker .react-datepicker__day--keyboard-selected {
+  background-color: var(--selected) !important;
+  color: #ffffff !important;
+  font-weight: bold;
+}
+
+.checklist-page-container .react-datepicker__day:hover {
+  background-color: rgba(0,0,0,0.05);
+}
+
+/* Custom Day Content (The Dots!) */
+.checklist-page-container .custom-calendar-day {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  width: 100%;
+  position: relative;
+}
+
+.checklist-page-container .task-dot {
+  position: absolute;
+  bottom: 2px;
+  width: 5px;
+  height: 5px;
+  background-color: #ff6b6b;
+  border-radius: 50%;
+}
+
+.checklist-page-container .react-datepicker__day--selected .task-dot {
+  background-color: transparent; 
+}
+
+/* --- TASKS SECTION SPECIFICS --- */
+.checklist-page-container .cl-tasks-section {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+/* Back Button Bar */
+.checklist-page-container .cl-tasks-top-bar {
+  margin-bottom: -4px;
+}
+
+.checklist-page-container .cl-back-btn {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  background: transparent;
+  border: none;
+  color: #6c757d;
+  font-weight: 600;
+  font-size: 0.95rem;
+  padding: 0;
+  cursor: pointer;
+  transition: color 0.2s;
+}
+
+.checklist-page-container .cl-back-btn:hover {
+  color: var(--selected);
+}
+
+.checklist-page-container .cl-tasks-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.checklist-page-container .cl-tasks-date {
+  margin: 0;
+  font-size: 1.4rem;
+  font-weight: 700;
+  color: var(--text-color);
+}
+
+.checklist-page-container .cl-tasks-count {
+  margin: 4px 0 0 0;
+  font-size: 0.9rem;
+  color: #6c757d;
+}
+
+.checklist-page-container .cl-add-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--selected);
+  color: white;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 20px;
+  font-weight: 600;
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: opacity 0.2s;
+}
+
+.checklist-page-container .cl-add-btn:hover {
+  opacity: 0.8;
+}
+
+/* Progress Bar */
+.checklist-page-container .cl-progress-track {
+  width: 100%;
+  height: 6px;
+  background: rgba(0, 0, 0, 0.05);
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.checklist-page-container .cl-progress-fill {
+  height: 100%;
+  background: var(--selected);
+  border-radius: 10px;
+  transition: width 0.3s ease;
+}
+
+/* Add Task Input Row */
+.checklist-page-container .cl-add-row {
+  display: flex;
+  gap: 10px;
+  background: var(--bg-color);
+  padding: 10px;
+  border-radius: 12px;
+}
+
+.checklist-page-container .cl-add-input,
+.checklist-page-container .cl-edit-input {
+  flex: 1;
+  border: none;
+  background: transparent;
+  padding: 8px;
+  font-size: 1rem;
+  color: var(--text-color);
+  outline: none;
+  font-family: inherit;
+}
+
+.checklist-page-container .cl-create-btn {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  background: var(--selected);
+  color: white;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 8px;
+  font-weight: bold;
+  cursor: pointer;
+}
+
+.checklist-page-container .cl-create-btn:disabled {
+  background: #ced4da;
+  cursor: not-allowed;
+}
+
+/* Task List */
+.checklist-page-container .cl-task-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.checklist-page-container .cl-task-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: transparent;
+  padding: 12px 0;
+  border-bottom: 1px solid rgba(0,0,0,0.05);
+  transition: all 0.2s;
+}
+
+.checklist-page-container .cl-task-row:last-child {
+  border-bottom: none;
+}
+
+.checklist-page-container .cl-task-done {
+  opacity: 0.6;
+}
+
+/* Custom Checkbox */
+.checklist-page-container .cl-checkbox {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  border: 2px solid #ced4da;
+  background: transparent;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s;
+  padding: 0;
+  color: white;
+}
+
+.checklist-page-container .cl-checkbox-checked {
+  background: var(--selected);
+  border-color: var(--selected);
+}
+
+.checklist-page-container .cl-task-text {
+  flex: 1;
+  font-size: 1rem;
+  color: var(--text-color);
+  transition: color 0.2s;
+}
+
+.checklist-page-container .cl-task-text-done {
+  text-decoration: line-through;
+  color: #6c757d;
+}
+
+/* Actions (Edit/Delete) */
+.checklist-page-container .cl-task-actions {
+  display: flex;
+  gap: 6px;
+}
+
+.checklist-page-container .cl-icon-btn {
+  background: transparent;
+  border: none;
+  color: #6c757d;
+  padding: 6px;
+  border-radius: 6px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  transition: background 0.2s;
+}
+
+.checklist-page-container .cl-icon-btn:hover {
+  background: rgba(0, 0, 0, 0.05);
+  color: var(--text-color);
+}
+
+.checklist-page-container .cl-delete-btn:hover {
+  background: rgba(220, 53, 69, 0.1);
+  color: #dc3545;
+}
+
+.checklist-page-container .cl-action-btn {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 12px;
+  border-radius: 6px;
+  font-weight: 600;
+  font-size: 0.85rem;
+  cursor: pointer;
+  border: none;
+}
+
+.checklist-page-container .cl-save-btn {
+  background: #28a745;
+  color: white;
+}
+
+.checklist-page-container .cl-cancel-btn {
+  background: transparent;
+  border: 1px solid #ced4da;
+  color: #6c757d;
+}
+
+/* Empty States */
+.checklist-page-container .cl-empty-state {
+  text-align: center;
+  padding: 40px 20px;
+  background: transparent;
+  border-radius: 12px;
+  border: 2px dashed #ced4da;
+}
+
+.checklist-page-container .cl-empty-icon {
+  font-size: 2.5rem;
+  margin-bottom: 10px;
+}
+
+.checklist-page-container .cl-empty-title {
+  margin: 0;
+  font-size: 1.2rem;
+  font-weight: 600;
+  color: var(--text-color);
+}
+
+.checklist-page-container .cl-empty-sub {
+  margin: 5px 0 0 0;
+  color: #6c757d;
+  font-size: 0.95rem;
+}

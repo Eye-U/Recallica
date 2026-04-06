@@ -1,132 +1,294 @@
-import { useEffect, useState } from "react"
-import { auth, googleProvider, db } from "./config/firebase";
-import { createUserWithEmailAndPassword, onAuthStateChanged, signInWithEmailAndPassword, signInWithPopup, updateProfile } from "firebase/auth";
+import React, { useState, useEffect } from "react";
+import type { ChangeEvent } from "react";
 import { useNavigate } from "react-router-dom";
+import { auth, googleProvider, db } from "./config/firebase";
+import {
+  createUserWithEmailAndPassword,
+  signInWithEmailAndPassword,
+  signInWithPopup,
+  updateProfile,
+  onAuthStateChanged,
+} from "firebase/auth";
+import type { User as FirebaseUser } from "firebase/auth";
 import { doc, setDoc } from "firebase/firestore";
+import { User, Mail, Lock, ArrowRight, Zap } from "lucide-react";
+import "./style.css";
 
-function Login() {
-  const [username, setUsername] = useState('');
-  const [emailS, setEmailS] = useState('');
-  const [passwordS, setPasswordS] = useState('');
-  const [emailL, setEmailL] = useState('');
-  const [passwordL, setPasswordL] = useState('');
-  const [errorMessage, setErrorMessage] = useState("");
-  const navigate = useNavigate();
-
-  useEffect(() => {
-    const removeListener = onAuthStateChanged(auth, (user) => {
-      if (user?.email) {
-        navigate("/home");
-      }
-    });
-
-    return () => removeListener();
-  }, [navigate]);
-  
-
-  const signIn = async() =>{
-    try{
-      if(username!=null){
-        const user = await createUserWithEmailAndPassword(auth, emailS, passwordS);
-      
-        await updateProfile(user.user, { displayName: username});
-
-        await setDoc(doc(db, "users", user.user.uid), {
-          username: user.user.displayName,
-          email: user.user.email,
-        });
-      }else{
-        setErrorMessage("Invalid Username.");
-      }
-
-    } catch(err: any){
-      switch (err.code) {
-        case "auth/email-already-in-use":
-          setErrorMessage("This email is already registered. Try logging in.");
-          break;
-        case "auth/invalid-email":
-          setErrorMessage("Please enter a valid email address.");
-          break;
-        case "auth/weak-password":
-          setErrorMessage("Password should be at least 6 characters.");
-          break;
-        case "auth/operation-not-allowed":
-          setErrorMessage("Email/password accounts are not enabled. Contact support.");
-          break;
-        default:
-          setErrorMessage("Registration failed. Please try again later.");
-      }
-    }
-  }
-
-  const GoogleSignIn = async() =>{
-    try{
-      const user = await signInWithPopup(auth, googleProvider);
-
-      await setDoc(doc(db, "users", user.user.uid), {
-          username: user.user.displayName,
-          email: user.user.email,
-        });
-    } catch(err: any){
-      setErrorMessage("Something Went wrong");
-    }
-  }
-
-  const logIn = async() =>{
-    try{
-      await signInWithEmailAndPassword(auth, emailL, passwordL);
-    } catch(err: any){
-      switch (err.code) {
-        case "auth/user-not-found":
-          setErrorMessage("This email is not registered.");
-          break;
-        default:
-          setErrorMessage("Login failed. Please try again.");
-      }
-    }
-  }
-
-  console.log(auth?.currentUser?.email);
-
-  return (
-    <>
-      <p className="s1 txt-chaneg">Create account</p>
-      <input type="text" placeholder="Email"
-      onChange={(e)=> setEmailS(e.target.value)}
-      />
-
-      <input type="password" placeholder="Password"
-      onChange={(e)=> setPasswordS(e.target.value)}
-      />
-
-      <input type="text" placeholder="Username for sign up"
-      onChange={(e)=> setUsername(e.target.value)}
-      />
-
-      <br />
-
-      <p className="s1 txt-chaneg">Login</p>
-      <input type="text" placeholder="Email"
-      onChange={(e)=> setEmailL(e.target.value)}
-      />
-
-      <input type="password" placeholder="Password"
-      onChange={(e)=> setPasswordL(e.target.value)}
-      />
-
-      <br />
-
-      <button onClick={signIn}>Sign in</button>
-      <button onClick={logIn}>Log in</button>
-      <button onClick={GoogleSignIn}>sign in with google</button>
-
-
-      {/* error messages */}
-      <div>
-        {errorMessage}
-      </div>
-    </>
-  )
+interface SignUpForm {
+  username: string;
+  email: string;
+  password: string;
 }
 
-export default Login
+interface LoginForm {
+  email: string;
+  password: string;
+}
+
+interface InputProps {
+  label: string;
+  placeholder: string;
+  icon?: React.ReactNode;
+  type?: string;
+  value: string;
+  onChange: (e: ChangeEvent<HTMLInputElement>) => void;
+}
+
+const InputField: React.FC<InputProps> = ({
+  label,
+  placeholder,
+  icon,
+  type = "text",
+  value,
+  onChange,
+}) => (
+  <div className="field-group">
+    <label className="field-label">{label}</label>
+    <div className="field-wrap">
+      {icon && <span className="field-icon">{icon}</span>}
+      <input
+        type={type}
+        placeholder={placeholder}
+        value={value}
+        onChange={onChange}
+        className="field-input"
+      />
+    </div>
+  </div>
+);
+
+const GoogleIcon: React.FC = () => (
+  <svg width="16" height="16" viewBox="0 0 48 48" aria-hidden="true">
+    <path
+      fill="#EA4335"
+      d="M24 9.5c3.2 0 5.9 1.1 8.1 3.1l6-6C34.5 3.1 29.6 1 24 1 15.2 1 7.7 6.2 4.2 13.7l7 5.4C12.8 13.1 17.9 9.5 24 9.5z"
+    />
+    <path
+      fill="#4285F4"
+      d="M46.5 24.5c0-1.6-.1-3.1-.4-4.5H24v8.5h12.7c-.6 3-2.3 5.5-4.8 7.2l7.4 5.8c4.3-4 6.9-9.9 7.2-17z"
+    />
+    <path
+      fill="#FBBC05"
+      d="M11.2 28.7A14.9 14.9 0 0 1 9.5 24c0-1.6.3-3.2.7-4.6l-7-5.4A23.5 23.5 0 0 0 .5 24c0 3.9.9 7.5 2.7 10.7l8-6z"
+    />
+    <path
+      fill="#34A853"
+      d="M24 47c5.4 0 10-1.8 13.3-4.8l-7.4-5.8c-1.8 1.2-4.1 1.9-5.9 1.9-6.1 0-11.2-3.6-13.8-9l-8 6C6 41.6 14.3 47 24 47z"
+    />
+  </svg>
+);
+
+const Login: React.FC = () => {
+  const navigate = useNavigate();
+  const [tab, setTab] = useState<"login" | "signup">("signup");
+  const [signupData, setSignupData] = useState<SignUpForm>({
+    username: "",
+    email: "",
+    password: "",
+  });
+  const [loginData, setLoginData] = useState<LoginForm>({
+    email: "",
+    password: "",
+  });
+  const [loading, setLoading] = useState<boolean>(false);
+  const [errorMessage, setErrorMessage] = useState<string>("");
+
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, (user: FirebaseUser | null) => {
+      if (user?.email) navigate("/home");
+    });
+    return () => unsubscribe();
+  }, [navigate]);
+
+  const handleSignUp = async () => {
+    const { username, email, password } = signupData;
+    if (!username || !email || !password) {
+      setErrorMessage("All fields are required.");
+      return;
+    }
+    setLoading(true);
+    setErrorMessage("");
+    try {
+      const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+      await updateProfile(userCredential.user, { displayName: username });
+      await setDoc(doc(db, "users", userCredential.user.uid), { username, email });
+    } catch (err: any) {
+      setErrorMessage(err.message || "Sign up failed.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleLogin = async () => {
+    const { email, password } = loginData;
+    if (!email || !password) {
+      setErrorMessage("All fields are required.");
+      return;
+    }
+    setLoading(true);
+    setErrorMessage("");
+    try {
+      await signInWithEmailAndPassword(auth, email, password);
+    } catch (err: any) {
+      setErrorMessage(err.message || "Login failed.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleGoogle = async () => {
+    setLoading(true);
+    setErrorMessage("");
+    try {
+      const userCredential = await signInWithPopup(auth, googleProvider);
+      await setDoc(
+        doc(db, "users", userCredential.user.uid),
+        {
+          username: userCredential.user.displayName,
+          email: userCredential.user.email,
+        },
+        { merge: true }
+      );
+    } catch {
+      setErrorMessage("Google sign-in failed.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="login-container">
+      {/* Decorative background shapes */}
+      <div className="bg-shape bg-shape-1" aria-hidden="true" />
+      <div className="bg-shape bg-shape-2" aria-hidden="true" />
+
+      <div className="login-card">
+        {/* Brand */}
+        <div className="brand">
+          <div className="brand-icon">
+            <Zap size={16} strokeWidth={2.5} />
+          </div>
+          <span className="brand-name">Recallica</span>
+        </div>
+
+        {/* Headline */}
+        <h1 className="card-headline">
+          {tab === "signup" ? "Create your account" : "Welcome back"}
+        </h1>
+        <p className="card-subline">
+          {tab === "signup"
+            ? "Start your productivity journey today."
+            : "Log in to continue where you left off."}
+        </p>
+
+        {/* Tabs */}
+        <div className="tabs" role="tablist">
+          <button
+            role="tab"
+            aria-selected={tab === "login"}
+            className={`tab-btn ${tab === "login" ? "active" : ""}`}
+            onClick={() => { setTab("login"); setErrorMessage(""); }}
+          >
+            Log in
+          </button>
+          <button
+            role="tab"
+            aria-selected={tab === "signup"}
+            className={`tab-btn ${tab === "signup" ? "active" : ""}`}
+            onClick={() => { setTab("signup"); setErrorMessage(""); }}
+          >
+            Sign up
+          </button>
+        </div>
+
+        {/* Forms */}
+        {tab === "signup" ? (
+          <div className="form-body">
+            <InputField
+              label="Username"
+              placeholder="your_username"
+              value={signupData.username}
+              onChange={(e) => setSignupData({ ...signupData, username: e.target.value })}
+              icon={<User size={15} />}
+            />
+            <InputField
+              label="Email"
+              placeholder="you@example.com"
+              type="email"
+              value={signupData.email}
+              onChange={(e) => setSignupData({ ...signupData, email: e.target.value })}
+              icon={<Mail size={15} />}
+            />
+            <InputField
+              label="Password"
+              placeholder="••••••••"
+              type="password"
+              value={signupData.password}
+              onChange={(e) => setSignupData({ ...signupData, password: e.target.value })}
+              icon={<Lock size={15} />}
+            />
+            <button
+              className="primary-btn"
+              onClick={handleSignUp}
+              disabled={loading}
+            >
+              {loading ? <span className="btn-spinner" /> : <>Create account <ArrowRight size={16} /></>}
+            </button>
+          </div>
+        ) : (
+          <div className="form-body">
+            <InputField
+              label="Email"
+              placeholder="you@example.com"
+              type="email"
+              value={loginData.email}
+              onChange={(e) => setLoginData({ ...loginData, email: e.target.value })}
+              icon={<Mail size={15} />}
+            />
+            <InputField
+              label="Password"
+              placeholder="••••••••"
+              type="password"
+              value={loginData.password}
+              onChange={(e) => setLoginData({ ...loginData, password: e.target.value })}
+              icon={<Lock size={15} />}
+            />
+            <button
+              className="primary-btn"
+              onClick={handleLogin}
+              disabled={loading}
+            >
+              {loading ? <span className="btn-spinner" /> : <>Log in <ArrowRight size={16} /></>}
+            </button>
+          </div>
+        )}
+
+        {/* Divider */}
+        <div className="divider">
+          <span className="divider-line" />
+          <span className="divider-text">or</span>
+          <span className="divider-line" />
+        </div>
+
+        {/* Google */}
+        <button className="google-btn" onClick={handleGoogle} disabled={loading}>
+          <GoogleIcon />
+          Continue with Google
+        </button>
+
+        {/* Error */}
+        {errorMessage && (
+          <p className="error-message" role="alert">{errorMessage}</p>
+        )}
+
+        {/* Footer */}
+        <p className="footer-text">
+          By continuing, you agree to our{" "}
+          <a href="#" className="footer-link">Terms &amp; Conditions</a>
+        </p>
+      </div>
+    </div>
+  );
+};
+
+export default Login;

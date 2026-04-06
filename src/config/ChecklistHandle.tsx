@@ -1,20 +1,22 @@
 import { addDoc, collection, deleteDoc, doc } from "firebase/firestore";
 import { auth, db } from "./firebase";
 
-export async function createSTask(task: string, date: any){
-    if(task.replace(/\s+/g, "")=="") return;
-    const uid = auth.currentUser?.uid;
-    if (!uid) return;
-
-    await addDoc(collection(db, "users", uid, "toDo"), {
-        task: task,
-        date: date,
-        checked: false,
-    });
-}
-
-export async function DeleteTask(taskid: any) {
-    const uid = auth.currentUser?.uid;
-    if (!uid) return;
-    await deleteDoc(doc(db, "users", uid, "ToDo", taskid));
-}
+export const createSTask = async (task: string, date: string) => {
+  const uid = auth.currentUser?.uid;
+  if (!uid) return;
+ 
+  await addDoc(collection(db, "users", uid, "toDo"), {
+    task,
+    date,
+    checked: false,
+    createdAt: new Date().toISOString(),
+  });
+};
+ 
+export const DeleteTask = async (id: string) => {
+  const uid = auth.currentUser?.uid;
+  if (!uid) return;
+ 
+  await deleteDoc(doc(db, "users", uid, "toDo", id));
+};
+ 

@@ -1,159 +1,273 @@
-import { useEffect, useState, useRef } from "react";
-import { SideBar, AppBar, BottomBar } from "../components/Bar";
-import { auth } from "../config/firebase";
-import { onAuthStateChanged, type User } from "firebase/auth";
-import { useNavigate } from "react-router-dom";
-
-import L from "leaflet";
+import { useState, useEffect } from "react";
+import { AppBar, BottomBar, SideBar } from "../components/Bar";
+import { Search, Filter, Navigation, BookOpen, Coffee, TreePine, MapPin, Star } from "lucide-react";
+import { MapContainer, TileLayer, Marker, Popup, useMap } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
+import L from "leaflet";
+import "./Location.css";
 
-// @ts-ignore
-import "leaflet-routing-machine"; 
-// @ts-ignore
-import "leaflet-control-geocoder"; 
+// Fix for default Leaflet icon
+import markerIcon from "leaflet/dist/images/marker-icon.png";
+import markerShadow from "leaflet/dist/images/marker-shadow.png";
+let DefaultIcon = L.icon({
+  iconUrl: markerIcon,
+  shadowUrl: markerShadow,
+  iconSize: [25, 41],
+  iconAnchor: [12, 41],
+});
+L.Marker.prototype.options.icon = DefaultIcon;
 
-import markerIcon from "leaflet/dist/images/marker-icon.png?url";
-import markerShadow from "leaflet/dist/images/marker-shadow.png?url";
+// Custom Icon for the User's Location
+const userIcon = L.divIcon({
+  className: "loc-user-marker",
+  iconSize: [20, 20],
+  iconAnchor: [10, 10],
+});
 
-delete (L.Icon.Default.prototype as any)._getIconUrl;
-L.Icon.Default.mergeOptions({ iconUrl: markerIcon, shadowUrl: markerShadow });
-
-interface StudySpot {
-  id: number; lat: number; lon: number; name: string; type: string;
+// Helper to center the map programmatically
+function RecenterMap({ position }: { position: [number, number] }) {
+  const map = useMap();
+  useEffect(() => {
+    map.flyTo(position, 15);
+  }, [position, map]);
+  return null;
 }
 
-const Location = () => {
-  const [isOpen, setIsOpen] = useState<boolean>(true);
-  const [spots, setSpots] = useState<StudySpot[]>([]);
-  const [loading, setLoading] = useState(true);
-  const navigate = useNavigate();
+// Math helper to calculate distance between two coordinates in miles
+function calculateDistance(lat1: number, lon1: number, lat2: number, lon2: number) {
+  const R = 3958.8; // Earth radius in miles
+  const dLat = (lat2 - lat1) * (Math.PI / 180);
+  const dLon = (lon2 - lon1) * (Math.PI / 180);
+  const a = 
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos(lat1 * (Math.PI / 180)) * Math.cos(lat2 * (Math.PI / 180)) * Math.sin(dLon / 2) * Math.sin(dLon / 2); 
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a)); 
+  return (R * c).toFixed(1);
+}
 
-  const mapRef = useRef<L.Map | null>(null);
-  const mapContainerRef = useRef<HTMLDivElement>(null);
-  const routingRef = useRef<any>(null);
-  const markersRef = useRef<L.LayerGroup | null>(null);
-  const userMarkerRef = useRef<L.CircleMarker | null>(null);
-  const coordsRef = useRef({ lat: 14.5995, lng: 120.9842 });
+function Locations() {
+  const [isOpen, setIsOpen] = useState(false);
+  const [activeFilter, setActiveFilter] = useState("All");
+  const [searchQuery, setSearchQuery] = useState("");
+  // Defaulting to Rodriguez, PH for context, will update if geolocation is allowed
+  const [userPos, setUserPos] = useState<[number, number]>([14.73, 121.13]); 
+  
+  // New States for Real Data
+  const [places, setPlaces] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
 
+// 1. Get User Location on Load (UPDATED FOR HIGH ACCURACY)
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (user: User | null) => {
-      if (!user?.email) navigate("/");
-    });
-    return () => unsubscribe();
-  }, [navigate]);
-
-  // 🛠️ Route Drawing Logic
-  const drawRoute = (dLat: number, dLon: number) => {
-    if (!mapRef.current) return;
-    if (routingRef.current) mapRef.current.removeControl(routingRef.current);
-
-    routingRef.current = (L as any).Routing.control({
-      waypoints: [L.latLng(coordsRef.current.lat, coordsRef.current.lng), L.latLng(dLat, dLon)],
-      lineOptions: { styles: [{ color: "#3b82f6", weight: 6, opacity: 0.8 }] },
-      createMarker: () => null,
-      addWaypoints: false,
-      show: false 
-    }).addTo(mapRef.current);
-  };
-
-  // 🔎 Overpass API: Find Libraries, Cafes, Bookstores
-  const fetchData = async (lat: number, lng: number) => {
-    setLoading(true);
-    const query = `[out:json];(node["amenity"~"library|cafe"](around:3000,${lat},${lng});node["shop"="books"](around:3000,${lat},${lng}););out;`;
-    try {
-      const res = await fetch("https://overpass-api.de/api/interpreter", { method: "POST", body: query });
-      const data = await res.json();
-      const found = data.elements.map((e: any) => ({
-        id: e.id, lat: e.lat, lon: e.lon,
-        name: e.tags.name || "Study Spot",
-        type: e.tags.amenity || e.tags.shop || "Spot"
-      }));
-      setSpots(found);
-
-      if (markersRef.current) {
-        markersRef.current.clearLayers();
-        found.forEach((p: StudySpot) => {
-          L.marker([p.lat, p.lon]).addTo(markersRef.current!)
-            .bindPopup(`<b>${p.name}</b>`)
-            .on('click', () => drawRoute(p.lat, p.lon));
-        });
-      }
-    } catch (err) { console.error(err); } finally { setLoading(false); }
-  };
-
-  useEffect(() => {
-    if (!mapContainerRef.current || mapRef.current) return;
-
-    const map = L.map(mapContainerRef.current!, { zoomControl: false }).setView([14.5995, 120.9842], 15);
-    mapRef.current = map;
-
-    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png").addTo(map);
-    markersRef.current = L.layerGroup().addTo(map);
-
-    userMarkerRef.current = L.circleMarker([14.5995, 120.9842], {
-      radius: 9, color: "white", fillColor: "#3b82f6", fillOpacity: 1, weight: 3,
-    }).addTo(map);
-
-    // 🔍 SEARCH BAR (Geocoder)
-    const ControlAny = L.Control as any;
-    if (ControlAny.geocoder) {
-      ControlAny.geocoder({
-        defaultMarkGeocode: false,
-        placeholder: "Search for a place...",
-      }).on('markgeocode', (e: any) => {
-        const { center } = e.geocode;
-        map.flyTo(center, 16);
-        fetchData(center.lat, center.lng);
-      }).addTo(map);
-    }
-
-    // 📍 LIVE TRACKER
-    const watchId = navigator.geolocation.watchPosition(
-      (pos) => {
-        const { latitude, longitude } = pos.coords;
-        coordsRef.current = { lat: latitude, lng: longitude };
-        userMarkerRef.current?.setLatLng([latitude, longitude]);
-        if (spots.length === 0) {
-            map.setView([latitude, longitude], 15);
-            fetchData(latitude, longitude);
+    if ("geolocation" in navigator) {
+      navigator.geolocation.getCurrentPosition(
+        (pos) => {
+          setUserPos([pos.coords.latitude, pos.coords.longitude]);
+        },
+        (error) => {
+          console.warn("Could not get accurate location:", error.message);
+        },
+        { 
+          enableHighAccuracy: true, // Forces GPS instead of IP guessing
+          timeout: 10000, 
+          maximumAge: 0 
         }
-      },
-      (err) => console.error(err), { enableHighAccuracy: true }
-    );
-
-    setTimeout(() => map.invalidateSize(), 500);
-    return () => {
-      navigator.geolocation.clearWatch(watchId);
-      if (mapRef.current) { mapRef.current.remove(); mapRef.current = null; }
-    };
+      );
+    }
   }, []);
 
+  // 2. Fetch Real Places from Overpass API
+  useEffect(() => {
+    const fetchPlaces = async () => {
+      setIsLoading(true);
+      const [lat, lon] = userPos;
+      const radius = 3000; // Search within 3000 meters (approx 1.8 miles)
+
+      // Map our UI filters to OpenStreetMap Tags
+      let queryTags = "";
+      if (activeFilter === "Cafe") queryTags = '["amenity"="cafe"]';
+      else if (activeFilter === "Library") queryTags = '["amenity"="library"]';
+      else if (activeFilter === "Park") queryTags = '["leisure"="park"]';
+      else if (activeFilter === "Study Room") queryTags = '["amenity"="university"]'; // Fallback for study rooms
+      else queryTags = '["amenity"~"cafe|library"]["leisure"~"park"]'; // All
+
+      // Construct the Overpass QL Query
+      const query = `
+        [out:json][timeout:25];
+        (
+          node${queryTags}(around:${radius},${lat},${lon});
+          way${queryTags}(around:${radius},${lat},${lon});
+        );
+        out center;
+      `;
+
+      try {
+        const response = await fetch("https://overpass-api.de/api/interpreter", {
+          method: "POST",
+          body: query
+        });
+        const data = await response.json();
+
+        // Format the raw OSM data into our UI structure
+        const formattedPlaces = data.elements.map((el: any, index: number) => {
+          const placeLat = el.lat || el.center.lat;
+          const placeLon = el.lon || el.center.lon;
+          
+          // Determine type based on OSM tags
+          let type = "Place";
+          let tags = ["WIFI"];
+          if (el.tags?.amenity === "cafe") { type = "Cafe"; tags = ["Coffee", "WIFI"]; }
+          if (el.tags?.amenity === "library") { type = "Library"; tags = ["Quiet", "Books"]; }
+          if (el.tags?.leisure === "park") { type = "Park"; tags = ["Nature", "Outdoors"]; }
+
+          return {
+            id: el.id,
+            name: el.tags?.name || `Unnamed ${type}`,
+            type: type,
+            distance: `${calculateDistance(lat, lon, placeLat, placeLon)} mi`,
+            position: [placeLat, placeLon],
+            // Fake data for UI aesthetics (OSM doesn't track these)
+            seats: `${Math.floor(Math.random() * 30) + 10} seats`,
+            rating: (Math.random() * (5.0 - 4.0) + 4.0).toFixed(1),
+            status: "OPEN",
+            tags: tags
+          };
+        });
+
+        // Remove places without names if you want a cleaner list
+        const cleanPlaces = formattedPlaces.filter((p: any) => !p.name.includes("Unnamed"));
+        setPlaces(cleanPlaces);
+
+      } catch (error) {
+        console.error("Error fetching places:", error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchPlaces();
+  }, [userPos, activeFilter]); // Re-run when location or filter changes
+
+  // 3. Local Search Filter
+  const filteredPlaces = places.filter(place => 
+    place.name.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
   return (
-    <div style={{ height: "100vh", width: "100vw", display: "flex", flexDirection: "column", overflow: "hidden" }}>
-      <AppBar onToggle={() => setIsOpen(!isOpen)} title="Recallica Map" />
-      <div style={{ flex: 1, position: "relative", display: "flex" }}>
-        <SideBar isOpen={isOpen} />
-        <div ref={mapContainerRef} style={{ flex: 1, height: "100%", zIndex: 1 }} />
-        
-        {/* Nearby Spots List */}
-        <div style={{ 
-          position: "absolute", bottom: "90px", right: "15px", left: "15px",
-          maxHeight: "30%", backgroundColor: "white", borderRadius: "15px",
-          zIndex: 1000, boxShadow: "0 4px 20px rgba(0,0,0,0.2)", overflowY: "auto", padding: "15px"
-        }}>
-          <h4 style={{ margin: "0 0 10px 0" }}>Nearby Study Spots</h4>
-          {loading ? <p>Locating...</p> : spots.map(spot => (
-            <div key={spot.id} onClick={() => { mapRef.current?.flyTo([spot.lat, spot.lon], 17); drawRoute(spot.lat, spot.lon); }}
-              style={{ padding: "10px 0", borderBottom: "1px solid #eee", cursor: "pointer" }}>
-              <div style={{ fontWeight: "600" }}>{spot.name}</div>
-              <div style={{ fontSize: "0.8rem", color: "#666" }}>{spot.type}</div>
+    <div className="locations-page-container">
+      <AppBar onToggle={() => setIsOpen(!isOpen)} title="Study Spots" />
+      <SideBar isOpen={isOpen} onClose={() => setIsOpen(false)} />
+
+      <main className="loc-main-content">
+        <div className="loc-map-container">
+          <MapContainer center={userPos} zoom={15} zoomControl={false} style={{ height: "100%", width: "100%" }}>
+            <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
+            <RecenterMap position={userPos} />
+            
+            {/* THE NEW USER LOCATION MARKER */}
+            <Marker position={userPos} icon={userIcon} zIndexOffset={1000}>
+              <Popup>
+                <strong>You are here</strong>
+              </Popup>
+            </Marker>
+
+            {/* Render Real Markers for Places */}
+            {filteredPlaces.map(place => (
+              <Marker key={place.id} position={place.position as [number, number]}>
+                <Popup>
+                  <strong>{place.name}</strong> <br /> {place.type}
+                </Popup>
+              </Marker>
+            ))}
+          </MapContainer>
+
+          <div className="loc-search-overlay">
+            <div className="loc-search-bar">
+              <Search size={20} color="#6c757d" />
+              <input 
+                type="text" 
+                placeholder="Search study spots..." 
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+              />
+              <button className="loc-filter-icon"><Filter size={18} /></button>
             </div>
-          ))}
+          </div>
+
+          <button className="loc-recenter-btn" onClick={() => {
+            if ("geolocation" in navigator) {
+              navigator.geolocation.getCurrentPosition((pos) => {
+                setUserPos([pos.coords.latitude, pos.coords.longitude]);
+              });
+            }
+          }}>
+            <Navigation size={20} color="#2563eb" />
+          </button>
         </div>
-      </div>
+
+        <div className="loc-bottom-sheet">
+          <div className="loc-sheet-handle"></div>
+          <div className="loc-sheet-header">
+            <div>
+              <h2 className="loc-sheet-title">Nearby Places</h2>
+              <p className="loc-sheet-subtitle">
+                {isLoading ? "Searching area..." : `${filteredPlaces.length} spots found near you`}
+              </p>
+            </div>
+            <div className="loc-live-badge"><span className="loc-live-dot"></span>Live</div>
+          </div>
+
+          <div className="loc-filters-scroll">
+            {["All", "Library", "Cafe", "Park"].map(f => (
+              <button 
+                key={f} 
+                className={`loc-filter-pill ${activeFilter === f ? "active" : ""}`} 
+                onClick={() => setActiveFilter(f)}
+              >
+                {f}
+              </button>
+            ))}
+          </div>
+
+          <div className="loc-places-list">
+            {isLoading && <p className="loc-no-results">Fetching live satellite data...</p>}
+            
+            {!isLoading && filteredPlaces.length === 0 && (
+              <p className="loc-no-results">No places found. Try a different filter or zooming out.</p>
+            )}
+
+            {!isLoading && filteredPlaces.map(place => (
+              <div key={place.id} className="loc-place-card">
+                <div className="loc-place-icon">
+                  {place.type === "Library" && <BookOpen size={24} color="#2563eb" />}
+                  {place.type === "Cafe" && <Coffee size={24} color="#d97706" />}
+                  {place.type === "Park" && <TreePine size={24} color="#16a34a" />}
+                  {place.type === "Place" && <MapPin size={24} color="#9333ea" />}
+                </div>
+                <div className="loc-place-details">
+                  <div className="loc-place-name-row">
+                    <h3>{place.name}</h3>
+                    <div className="loc-rating"><Star size={14} fill="#fbbf24" stroke="none" /> {place.rating}</div>
+                  </div>
+                  <div className="loc-place-meta">
+                    <span className="loc-meta-type">{place.type.toUpperCase()}</span> 
+                    <span className="loc-meta-dot">•</span> <span>{place.distance}</span> 
+                    <span className="loc-meta-dot">•</span> <span>{place.seats}</span>
+                    <span className={`loc-status ${place.status.toLowerCase()}`}>{place.status}</span>
+                  </div>
+                  <div className="loc-place-tags">
+                    {place.tags.map((tag: string) => (
+                      <span key={tag} className="loc-tag">{tag}</span>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </main>
       <BottomBar />
     </div>
   );
-};
+}
 
-export default Location;
+export default Locations;
