@@ -1,0 +1,240 @@
+/* --- BASE LAYOUT --- */
+.lessons-page-container {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  background-color: var(--bg-color, #f8fafc);
+  font-family: inherit;
+}
+
+.les-main-content {
+  flex: 1;
+  padding: 80px 20px 90px 20px; /* Flush padding under AppBar */
+  max-width: 800px;
+  margin: 0 auto;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+/* --- HEADER --- */
+.les-header-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 24px;
+}
+
+.les-title {
+  margin: 0;
+  font-size: 1.8rem;
+  font-weight: 800;
+  /* Color is injected via inline styles! */
+}
+
+.les-subtitle {
+  margin: 4px 0 0 0;
+  font-size: 0.95rem;
+  color: #64748b;
+}
+
+.les-add-btn, .les-add-btn-large {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: white;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 20px;
+  font-weight: 600;
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: opacity 0.2s;
+}
+
+.les-add-btn:hover, .les-add-btn-large:hover {
+  opacity: 0.9;
+}
+
+/* --- EMPTY STATE --- */
+.les-empty-state {
+  text-align: center;
+  padding: 60px 20px;
+  background: var(--surface, #ffffff);
+  border-radius: 16px;
+  border: 2px dashed #cbd5e1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.les-empty-state h3 { margin: 16px 0 8px 0; color: var(--text-color, #0f172a); }
+.les-empty-state p { color: #64748b; margin: 0 0 20px 0; max-width: 300px; }
+
+/* --- LIST VIEW --- */
+.les-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.les-card {
+  background: var(--surface, #ffffff);
+  border-radius: 16px;
+  padding: 16px 20px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.03);
+  cursor: pointer;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  border: 1px solid var(--gray-100, #f1f5f9);
+}
+
+.les-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.06);
+  border-color: var(--theme-color);
+}
+
+.les-card-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: color-mix(in srgb, var(--theme-color) 10%, transparent);
+}
+
+.les-card-title {
+  margin: 0;
+  flex: 1;
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: var(--text-color, #1e293b);
+}
+
+.les-card-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.les-delete-btn {
+  background: transparent;
+  border: none;
+  color: #cbd5e1;
+  cursor: pointer;
+  padding: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: color 0.2s;
+  border-radius: 50%;
+}
+
+.les-card:hover .les-delete-btn:hover {
+  color: #ef4444;
+  background: #fee2e2;
+}
+
+.les-chevron {
+  color: #cbd5e1;
+  transition: transform 0.2s;
+}
+
+.les-card:hover .les-chevron {
+  color: var(--theme-color);
+  transform: translateX(4px);
+}
+
+/* --- MODAL --- */
+.les-modal-overlay {
+  position: fixed;
+  top: 0; left: 0; width: 100%; height: 100%;
+  background: rgba(0,0,0,0.4);
+  backdrop-filter: blur(2px);
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  box-sizing: border-box;
+}
+
+.les-modal {
+  background: var(--surface, white);
+  width: 100%;
+  max-width: 400px;
+  border-radius: 20px;
+  padding: 24px;
+  box-shadow: 0 10px 40px rgba(0,0,0,0.1);
+  animation: modalPop 0.3s ease-out;
+}
+
+@keyframes modalPop {
+  0% { opacity: 0; transform: scale(0.95) translateY(10px); }
+  100% { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+.les-modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+}
+
+.les-modal-header h2 { margin: 0; font-size: 1.25rem; color: var(--text-color, #0f172a); }
+.les-modal-header button { background: transparent; border: none; color: #64748b; cursor: pointer;}
+
+.les-modal-body {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.les-modal-body label {
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: #475569;
+  text-transform: uppercase;
+}
+
+.les-modal-body input {
+  width: 100%;
+  padding: 12px 16px;
+  border: 1px solid #cbd5e1;
+  border-radius: 12px;
+  font-size: 1rem;
+  outline: none;
+  font-family: inherit;
+  box-sizing: border-box;
+  background: transparent;
+  color: var(--text-color, #1e293b);
+}
+
+.les-create-btn {
+  width: 100%;
+  padding: 14px;
+  border: none;
+  border-radius: 12px;
+  color: white;
+  font-weight: 700;
+  font-size: 1rem;
+  cursor: pointer;
+  transition: opacity 0.2s;
+}
+
+.les-create-btn:disabled { background: #cbd5e1 !important; cursor: not-allowed; }
+.les-create-btn:hover:not(:disabled) { opacity: 0.9; }
+
+/* =========================================
+   DARK MODE OVERRIDES
+========================================= */
+.dark .les-card {
+  border-color: var(--gray-700, #334155);
+}
+.dark .les-card:hover .les-delete-btn:hover {
+  background: rgba(239, 68, 68, 0.2);
+}

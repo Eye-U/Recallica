@@ -1,0 +1,379 @@
+/* --- BASE LAYOUT --- */
+.flashcards-page-container {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  background-color: var(--bg-color, #f8fafc);
+  font-family: inherit;
+}
+
+.fc-main-content {
+  flex: 1;
+  /* Flush padding from our layout fix */
+  padding: 124px 20px 90px 20px; 
+  max-width: 600px;
+  margin: 0 auto;
+  width: 100%;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+}
+
+/* --- HEADER --- */
+.fc-header-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 30px;
+}
+
+.fc-title {
+  margin: 0;
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--text-color, #0f172a);
+}
+
+.fc-subtitle {
+  margin: 4px 0 0 0;
+  font-size: 0.95rem;
+  color: #64748b;
+  font-weight: 500;
+}
+
+.fc-add-btn, .fc-add-btn-large {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: #2563eb;
+  color: white;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 20px;
+  font-weight: 600;
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: opacity 0.2s;
+}
+
+.fc-add-btn:hover {
+  opacity: 0.9;
+}
+
+/* --- EMPTY STATE --- */
+.fc-empty-state {
+  text-align: center;
+  padding: 60px 20px;
+  background: var(--surface, #ffffff);
+  border-radius: 16px;
+  border: 2px dashed #cbd5e1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-top: 20px;
+}
+
+.fc-empty-state h3 {
+  margin: 16px 0 8px 0;
+  color: var(--text-color, #0f172a);
+}
+
+.fc-empty-state p {
+  color: #64748b;
+  margin: 0 0 24px 0;
+  max-width: 300px;
+  line-height: 1.5;
+}
+
+/* --- STUDY ARENA & GENIUS "FAKE FLIP" CARD --- */
+.fc-study-arena {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  align-items: center;
+}
+
+.fc-card-container {
+  width: 100%;
+  height: 380px;
+  perspective: 1000px; /* 3D Space */
+  position: relative;
+  margin-bottom: 30px;
+  cursor: pointer;
+}
+
+/* LIGHT MODE: Default Colors & Base Setup */
+.fc-card-front, .fc-card-back {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: var(--surface, #ffffff);
+  border-radius: 24px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 30px;
+  box-sizing: border-box;
+  text-align: center;
+  -webkit-font-smoothing: antialiased; 
+  -moz-osx-font-smoothing: grayscale;
+}
+
+.fc-card-front {
+  border: 2px solid var(--theme-color, #2563eb); /* Outline takes the subject color in light mode */
+  transform: rotateY(0deg);
+  transition: transform 0.2s ease-out 0.2s; 
+}
+
+.fc-card-back {
+  background: var(--gray-50, #f8fafc);
+  border: 2px solid var(--gray-200, #e2e8f0);
+  transform: rotateY(-90deg); 
+  transition: transform 0.2s ease-in 0s; 
+}
+
+/* Flipped State Choreography */
+.fc-card-container.is-flipped .fc-card-front {
+  transform: rotateY(90deg); 
+  transition: transform 0.2s ease-in 0s; 
+}
+
+.fc-card-container.is-flipped .fc-card-back {
+  transform: rotateY(0deg); 
+  transition: transform 0.2s ease-out 0.2s; 
+}
+
+/* Card Inner Text Formatting (Light Mode Defaults) */
+.fc-card-label {
+  position: absolute;
+  top: 24px;
+  font-size: 0.8rem;
+  font-weight: 800;
+  letter-spacing: 1.5px;
+  color: var(--theme-color, #94a3b8);
+}
+
+.answer-label {
+  color: #10b981;
+}
+
+.fc-card-text {
+  font-size: 1.6rem;
+  color: var(--text-color, #1e293b);
+  line-height: 1.4;
+  margin: 0;
+  word-wrap: break-word;
+}
+
+.fc-card-hint {
+  position: absolute;
+  bottom: 24px;
+  font-size: 0.9rem;
+  color: #cbd5e1;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.fc-delete-btn {
+  position: absolute;
+  bottom: 20px;
+  right: 20px;
+  background: #fee2e2;
+  color: #ef4444;
+  border: none;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.fc-delete-btn:hover {
+  background: #fecaca;
+  transform: scale(1.1);
+}
+
+/* --- DECK CONTROLS --- */
+.fc-controls {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  max-width: 300px;
+  gap: 20px;
+}
+
+.fc-nav-btn {
+  background: var(--surface, white);
+  border: 1px solid var(--gray-200, #e2e8f0);
+  color: var(--text-color, #0f172a);
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  box-shadow: 0 4px 10px rgba(0,0,0,0.05);
+  transition: all 0.2s;
+}
+
+.fc-nav-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+  box-shadow: none;
+}
+
+.fc-nav-btn:hover:not(:disabled) {
+  background: var(--gray-100, #f1f5f9);
+  transform: scale(1.05);
+}
+
+.fc-progress-bar {
+  flex: 1;
+  height: 8px;
+  background: var(--gray-200, #e2e8f0);
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.fc-progress-fill {
+  height: 100%;
+  background: var(--theme-color, #2563eb);
+  border-radius: 10px;
+  transition: width 0.3s ease;
+}
+
+/* --- MODAL --- */
+.fc-modal-overlay {
+  position: fixed;
+  top: 0; left: 0; width: 100%; height: 100%;
+  background: rgba(0,0,0,0.4);
+  backdrop-filter: blur(2px);
+  z-index: 300;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  box-sizing: border-box;
+}
+
+.fc-modal {
+  background: var(--surface, white);
+  width: 100%;
+  max-width: 400px;
+  border-radius: 20px;
+  padding: 24px;
+  box-shadow: 0 10px 40px rgba(0,0,0,0.1);
+  animation: modalPop 0.3s ease-out;
+}
+
+.fc-modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+}
+
+.fc-modal-header h2 { margin: 0; font-size: 1.25rem; color: var(--text-color, #0f172a); }
+.fc-modal-header button { background: transparent; border: none; color: #64748b; cursor: pointer;}
+
+.fc-modal-body {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.fc-modal-body label {
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: #475569;
+  text-transform: uppercase;
+}
+
+.fc-modal-body textarea {
+  width: 100%;
+  padding: 12px;
+  border: 1px solid #cbd5e1;
+  border-radius: 12px;
+  font-size: 1rem;
+  outline: none;
+  font-family: inherit;
+  resize: none;
+  box-sizing: border-box;
+  background: transparent;
+  color: var(--text-color, #1e293b);
+}
+
+.fc-modal-body textarea:focus {
+  border-color: #2563eb;
+}
+
+.fc-create-btn {
+  width: 100%;
+  padding: 14px;
+  border: none;
+  border-radius: 12px;
+  background: #2563eb;
+  color: white;
+  font-weight: 700;
+  font-size: 1rem;
+  cursor: pointer;
+}
+.fc-create-btn:disabled { background: #cbd5e1; cursor: not-allowed; }
+
+.sub-topbar-wrapper {
+  position: fixed;
+  top: 56px; /* Sits exactly underneath the 56px AppBar */
+  left: 0;
+  width: 100%;
+  z-index: 100;
+  background: var(--surface, #ffffff);
+  border-bottom: 1px solid var(--gray-200, #e2e8f0);
+}
+
+/* =========================================
+   DARK MODE OVERRIDES
+========================================= */
+
+/* When the <html> tag has the .dark class (from Settings.tsx), these rules take over! */
+
+.dark .fc-card-front {
+  background: var(--theme-color);
+  border-color: transparent;
+}
+
+.dark .sub-topbar-wrapper {
+  border-bottom-color: var(--gray-700, #334155);
+}
+
+.dark .fc-card-back {
+  /* Automatically calculates a shade 30% darker than the theme color */
+  background: color-mix(in srgb, var(--theme-color), black 30%);
+  border-color: transparent;
+}
+
+.dark .fc-card-text {
+  color: #ffffff;
+}
+
+.dark .fc-card-label {
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.dark .answer-label {
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.dark .fc-card-hint {
+  color: rgba(255, 255, 255, 0.5);
+}

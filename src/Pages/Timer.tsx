@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { SideBar, AppBar, BottomBar } from "../components/Bar";
 import { auth } from "../config/firebase";
 import { onAuthStateChanged } from "firebase/auth";
@@ -7,67 +7,131 @@ import './Timer.css';
 
 function Timer() {
   const [isOpen, setIsOpen] = useState(false);
+  const navigate = useNavigate();
+
+  // Timer States
   const [timeLeft, setTimeLeft] = useState(25 * 60); 
   const [isActive, setIsActive] = useState(false);
   const [currentTask, setCurrentTask] = useState("Pomodoro");
 
-  // State for Custom Presets
+// We use a ref for the interval so we can clear it safely anywhere
+  const intervalRef = useRef<number | null>(null);
+
+  // Custom Preset States
   const [customPresets, setCustomPresets] = useState<{time: number, name: string, emoji: string}[]>([]);
   const [isAddingCustom, setIsAddingCustom] = useState(false);
-  
-  // FIXED: Set initial states to empty so placeholders actually show up
   const [customTime, setCustomTime] = useState<number | "">("");
   const [customName, setCustomName] = useState("");
   const [customEmoji, setCustomEmoji] = useState("");
 
-  const navigate = useNavigate();
-
   useEffect(() => {
     const removeListener = onAuthStateChanged(auth, (user) => {
-      if (!user?.email) {
-        navigate("/");
-      }
+      if (!user?.email) navigate("/");
     });
     return () => removeListener();
   }, [navigate]);
 
+  // --- BACKGROUND TIMER SYNC ---
   useEffect(() => {
-    let interval: any = null;
-    if (isActive && timeLeft > 0) {
-      interval = setInterval(() => {
-        setTimeLeft((time) => time - 1);
-      }, 1000);
-    } else if (timeLeft === 0) {
-      clearInterval(interval);
-      setIsActive(false);
+    // 1. Load saved presets so they don't disappear on refresh!
+    const savedPresets = localStorage.getItem("customTimerPresets");
+    if (savedPresets) setCustomPresets(JSON.parse(savedPresets));
+
+    // 2. Check if a timer was running in the background
+    const targetTimeStr = localStorage.getItem("timerTargetTime");
+    const savedTask = localStorage.getItem("timerTaskName");
+
+    if (targetTimeStr) {
+      const targetTime = parseInt(targetTimeStr, 10);
+      const now = Date.now();
+      const remainingSeconds = Math.floor((targetTime - now) / 1000);
+
+      if (remainingSeconds > 0) {
+        // Resume the timer seamlessly
+        setTimeLeft(remainingSeconds);
+        setIsActive(true);
+        if (savedTask) setCurrentTask(savedTask);
+      } else {
+        // Timer finished while we were away!
+        clearTimerStorage();
+        setTimeLeft(0);
+        setIsActive(false);
+        if (savedTask) setCurrentTask(savedTask);
+      }
     }
-    return () => clearInterval(interval);
+  }, []);
+
+  // --- THE TICKING CLOCK ---
+  useEffect(() => {
+    if (isActive && timeLeft > 0) {
+      intervalRef.current = setInterval(() => {
+        setTimeLeft((prevTime) => {
+          if (prevTime <= 1) {
+            clearTimerStorage();
+            setIsActive(false);
+            return 0; // Timer hits zero!
+          }
+          return prevTime - 1;
+        });
+      }, 1000);
+    } else {
+      if (intervalRef.current) clearInterval(intervalRef.current);
+    }
+
+    return () => {
+      if (intervalRef.current) clearInterval(intervalRef.current);
+    };
   }, [isActive, timeLeft]);
 
-  const toggleTimer = () => setIsActive(!isActive);
+  // --- CONTROLS ---
+
+  const toggleTimer = () => {
+    if (!isActive) {
+      // STARTING: Save the target end time to local storage
+      const targetTime = Date.now() + (timeLeft * 1000);
+      localStorage.setItem("timerTargetTime", targetTime.toString());
+      localStorage.setItem("timerTaskName", currentTask);
+    } else {
+      // PAUSING: Clear the target time so it stops counting down in the background
+      clearTimerStorage();
+    }
+    setIsActive(!isActive);
+  };
   
   const resetTimer = () => {
+    clearTimerStorage();
     setIsActive(false);
     setTimeLeft(25 * 60);
     setCurrentTask("Pomodoro");
   };
 
   const applyPreset = (minutes: number, taskName: string) => {
+    clearTimerStorage();
     setIsActive(false);
     setTimeLeft(minutes * 60);
     setCurrentTask(taskName);
   };
 
+  const clearTimerStorage = () => {
+    localStorage.removeItem("timerTargetTime");
+    localStorage.removeItem("timerTaskName");
+  };
+
+  // --- CUSTOM PRESETS ---
+
   const saveCustomPreset = () => {
     if (customTime !== "" && Number(customTime) > 0 && customName.trim() !== "") {
-      setCustomPresets([...customPresets, { 
+      const newPreset = { 
         time: Number(customTime), 
         name: customName, 
-        emoji: customEmoji || "⏱️" // Fallback if they leave emoji blank
-      }]);
-      setIsAddingCustom(false);
+        emoji: customEmoji || "⏱️" 
+      };
       
-      // Reset form fields back to empty for the next time
+      const updatedPresets = [...customPresets, newPreset];
+      setCustomPresets(updatedPresets);
+      localStorage.setItem("customTimerPresets", JSON.stringify(updatedPresets)); // Save permanently!
+      
+      setIsAddingCustom(false);
       setCustomTime("");
       setCustomName("");
       setCustomEmoji("");
@@ -140,14 +204,12 @@ function Timer() {
                 <button onClick={() => applyPreset(20, "Eating/Lunch")}>🍱 20m Eat</button>
                 <button onClick={() => applyPreset(45, "Deep Study")}>📚 45m Study</button>
                 
-                {/* Render User's Custom Presets */}
                 {customPresets.map((preset, index) => (
                   <button key={index} onClick={() => applyPreset(preset.time, preset.name)}>
                     {preset.emoji} {preset.time}m {preset.name}
                   </button>
                 ))}
                 
-                {/* Add Custom Button */}
                 <button className="add-custom-btn" onClick={() => setIsAddingCustom(true)}>
                   ➕ Add Custom
                 </button>

@@ -5,13 +5,18 @@ import { auth } from './config/firebase'
 import Login from './Login'
 import Home from './Pages/Home'
 import Settings from './Pages/Settings'
-import Subjects from './Pages/StudyPages/Subjects'
-import Notes from './Pages/StudyPages/Notes'
-import Flashcards from './Pages/StudyPages/Flashcards'
 import Timer from './Pages/Timer'
 import Location from './Pages/Location'
 import Checklist from './Pages/Checklist'
 import Account from './Pages/Account'
+
+import Subjects from './Pages/study/Subjects'
+import Flashcards from './Pages/study/Flashcards'
+import Lessons from './Pages/study/Lessons'
+import Quizzes from './Pages/study/Quizzes'
+import Notes from './Pages/study/Notes'
+
+
 import './style.css'
 import { onAuthStateChanged } from 'firebase/auth'
 
@@ -27,13 +32,16 @@ const router = createBrowserRouter([
   { path: "/",                  element: <Login /> },
   { path: "/home",              element: <Home /> },
   { path: "/settings",          element: <Settings /> },
-  { path: "/study/subjects",    element: <Subjects /> },
-  { path: "/study/notes",       element: <Notes /> },
-  { path: "/study/flashcards",  element: <Flashcards /> },
   { path: "/timer",             element: <Timer /> },
   { path: "/location",          element: <Location /> },
   { path: "/checklist",         element: <Checklist /> },
   { path: "/account",           element: <Account /> },
+
+  { path: "/study/flashcards",           element: <Flashcards /> },
+  { path: "/study/subjects",    element: <Subjects /> },
+  { path: "/study/lessons",    element: <Lessons /> },
+  { path: "/study/quizzes",    element: <Quizzes /> },
+  { path: "/study/notes",    element: <Notes /> },
 ])
 
 function AppLoader() {

@@ -103,9 +103,9 @@ export const AppBar = ({ onToggle, title }: AppBarProps) => {
 export const TopBar = () => {
   return (
     <div className="top-bar">
-      <NavLink to="/study/subjects" className={({ isActive }) => isActive ? "top-btn top-btn-active" : "top-btn"}>Subjects</NavLink>
-      <NavLink to="/study/notes"    className={({ isActive }) => isActive ? "top-btn top-btn-active" : "top-btn"}>Notes</NavLink>
       <NavLink to="/study/flashcards" className={({ isActive }) => isActive ? "top-btn top-btn-active" : "top-btn"}>Flashcards</NavLink>
+      <NavLink to="/study/notes"    className={({ isActive }) => isActive ? "top-btn top-btn-active" : "top-btn"}>Notes</NavLink>
+      <NavLink to="/study/quizzes"  className={({ isActive }) => isActive ? "top-btn top-btn-active" : "top-btn"}>Quizzes</NavLink>
     </div>
   );
 };
