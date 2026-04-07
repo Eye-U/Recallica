@@ -66,7 +66,7 @@ function Subjects() {
     }
   };
 
-  const openSubject = (id: string, name: string) => {
+  const openSubject = (id: string) => {
     localStorage.setItem("CurrentSubject", id);
     navigate(`/study/lessons`); // Goes straight to the Flashcards hub for this subject
   };
@@ -104,7 +104,7 @@ function Subjects() {
               <div 
                 key={sub.id} 
                 className="sub-card" 
-                onClick={() => openSubject(sub.id, sub.name)}
+                onClick={() => openSubject(sub.id)}
                 style={{ borderTopColor: sub.color || "#3b82f6" }}
               >
                 <div className="sub-card-header">
