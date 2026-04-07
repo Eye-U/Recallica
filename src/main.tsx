@@ -20,11 +20,6 @@ import Notes from './Pages/study/Notes'
 import './style.css'
 import { onAuthStateChanged } from 'firebase/auth'
 
-// Persist CSS settings before render
-const savedScale = localStorage.getItem("fontScale");
-if (savedScale) {
-  document.documentElement.style.setProperty("--font-scale", savedScale);
-}
 const savedDark = localStorage.getItem("darkMode") === "true";
 document.documentElement.classList.toggle("dark", savedDark);
 

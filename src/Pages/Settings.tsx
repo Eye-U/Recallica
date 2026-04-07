@@ -8,10 +8,6 @@ import "../style.css";
 function Settings() {
   const [isOpen, setIsOpen] = useState(false);
   const [darkMode, setDarkMode] = useState(false);
-  const [scale, setScale] = useState(() => {
-    const saved = localStorage.getItem("fontScale");
-    return saved ? Number(saved) : 1;
-  });
 
   const toggleDark = () => {
     const newMode = !darkMode;
@@ -21,32 +17,21 @@ function Settings() {
   };
 
   useEffect(() => {
-    document.documentElement.style.setProperty("--font-scale", `${scale}`);
-    localStorage.setItem("fontScale", `${scale}`);
-  }, [scale]);
-
-  useEffect(() => {
+    // Load saved dark mode preference on boot
     const saved = localStorage.getItem("darkMode") === "true";
     setDarkMode(saved);
     document.documentElement.classList.toggle("dark", saved);
   }, []);
 
   const navigate = useNavigate();
+  
   useEffect(() => {
+    // Security redirect if not logged in
     const removeListener = onAuthStateChanged(auth, (user) => {
       if (!user?.email) navigate("/");
     });
     return () => removeListener();
   }, [navigate]);
-
-  const fontPercent = Math.round(scale * 100);
-  const sliderValue = Math.round(((scale - 0.7) / 0.8) * 100);
-
-  const handleSlider = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const pct = Number(e.target.value);
-    const newScale = parseFloat((0.7 + (pct / 100) * 0.8).toFixed(2));
-    setScale(newScale);
-  };
 
   return (
     <>
@@ -75,44 +60,10 @@ function Settings() {
                 <span className="dm-toggle-label">{darkMode ? "On" : "Off"}</span>
               </button>
             </div>
-
-            <div className="settings-row settings-row-col">
-              <div className="settings-row-info">
-                <span className="settings-row-label">Font size</span>
-                <span className="settings-row-desc">Drag to adjust text size across the app</span>
-              </div>
-              <div className="font-slider-control">
-                <span className="font-slider-a-small">A</span>
-                <div className="font-slider-track-wrap">
-                  <input
-                    type="range"
-                    min={0}
-                    max={100}
-                    step={1}
-                    value={sliderValue}
-                    onChange={handleSlider}
-                    className="font-slider"
-                    style={{ ["--slider-pct" as any]: `${sliderValue}%` }}
-                    aria-label="Font size"
-                  />
-                </div>
-                <span className="font-slider-a-large">A</span>
-                <span className="font-slider-badge">{fontPercent}%</span>
-                <button className="reset-btn" onClick={() => setScale(1)}>Reset</button>
-              </div>
-            </div>
+            
           </section>
 
-          <section className="settings-section">
-            <h2 className="settings-section-title">Preview</h2>
-            <div className="preview-card">
-              <p className="s1">Heading — Large</p>
-              <p className="s2">Subheading — Medium</p>
-              <p className="s3">Body text — Regular</p>
-              <p className="s4">Caption — Small</p>
-              <p className="s5">Label — Extra small</p>
-            </div>
-          </section>
+          {/* Room to add Account / Notifications / Study Preferences later! */}
 
         </div>
       </main>

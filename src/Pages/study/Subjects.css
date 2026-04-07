@@ -294,3 +294,68 @@
 .sub-create-btn:hover:not(:disabled) {
   opacity: 0.9;
 }
+
+/* =========================================
+   DARK MODE OVERRIDES
+========================================= */
+.dark .subjects-page-container {
+  background-color: var(--bg-color, #0f172a);
+}
+
+.dark .sub-empty-state {
+  background: var(--surface, #1e293b);
+  border-color: var(--gray-700, #334155);
+}
+
+.dark .sub-empty-state h3 {
+  color: var(--text-color, #f8fafc);
+}
+
+.dark .sub-card {
+  background: var(--surface, #1e293b);
+  border-left-color: var(--gray-700, #334155);
+  border-right-color: var(--gray-700, #334155);
+  border-bottom-color: var(--gray-700, #334155);
+}
+
+.dark .sub-card:hover {
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.4);
+}
+
+.dark .sub-card-title {
+  color: var(--text-color, #f8fafc);
+}
+
+.dark .sub-card-footer {
+  border-top-color: var(--gray-700, #334155);
+}
+
+.dark .sub-modal {
+  background: var(--surface, #1e293b);
+}
+
+.dark .sub-modal-header h2 {
+  color: var(--text-color, #f8fafc);
+}
+
+.dark .sub-modal-header button:hover {
+  color: white;
+}
+
+.dark .sub-modal-body input {
+  background: var(--bg-color, #0f172a);
+  border-color: var(--gray-700, #334155);
+  color: var(--text-color, #f8fafc);
+}
+
+.dark .sub-color-swatch {
+  border-color: var(--surface, #1e293b); /* Makes the ring look good in dark mode */
+}
+
+.dark .sub-title {
+  color: #f8fafc; /* Crisp white */
+}
+
+.dark .sub-subtitle {
+  color: #94a3b8; /* Light slate gray so it doesn't overpower the title */
+}

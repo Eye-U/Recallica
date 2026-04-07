@@ -1,8 +1,10 @@
 import { useEffect, useState, useRef } from "react";
 import { SideBar, AppBar, BottomBar } from "../components/Bar";
-import { auth } from "../config/firebase";
+import { auth, db } from "../config/firebase";
 import { onAuthStateChanged } from "firebase/auth";
+import { doc, getDoc, updateDoc, increment } from "firebase/firestore";
 import { useNavigate } from "react-router-dom";
+import { BookOpen } from "lucide-react";
 import './Timer.css'; 
 
 function Timer() {
@@ -11,10 +13,14 @@ function Timer() {
 
   // Timer States
   const [timeLeft, setTimeLeft] = useState(25 * 60); 
+  const [sessionDuration, setSessionDuration] = useState(25 * 60); // Tracks how much time to add at the end
   const [isActive, setIsActive] = useState(false);
   const [currentTask, setCurrentTask] = useState("Pomodoro");
 
-// We use a ref for the interval so we can clear it safely anywhere
+  // Subject Tracking State
+  const [activeSubjectName, setActiveSubjectName] = useState("General Focus");
+  const [activeSubjectColor, setActiveSubjectColor] = useState("#64748b");
+
   const intervalRef = useRef<number | null>(null);
 
   // Custom Preset States
@@ -31,28 +37,68 @@ function Timer() {
     return () => removeListener();
   }, [navigate]);
 
+  // --- FETCH ACTIVE SUBJECT ---
+  useEffect(() => {
+    const fetchSubjectContext = async () => {
+      const subId = localStorage.getItem("CurrentSubject");
+      const uid = auth.currentUser?.uid;
+      if (subId && uid) {
+        try {
+          const subDoc = await getDoc(doc(db, "users", uid, "Subjects", subId));
+          if (subDoc.exists()) {
+            setActiveSubjectName(subDoc.data().name);
+            setActiveSubjectColor(subDoc.data().color || "#3b82f6");
+          }
+        } catch (error) {
+          console.error("Error fetching subject for timer:", error);
+        }
+      }
+    };
+    fetchSubjectContext();
+  }, []);
+
+  // --- THE TIME LOGGER ---
+  const logStudyTime = async (secondsToAdd: number) => {
+    const subId = localStorage.getItem("CurrentSubject");
+    const uid = auth.currentUser?.uid;
+    
+    if (uid && subId && secondsToAdd > 0) {
+      try {
+        const subRef = doc(db, "users", uid, "Subjects", subId);
+        await updateDoc(subRef, {
+          TotalStudytime: increment(secondsToAdd)
+        });
+        console.log(`Successfully logged ${secondsToAdd} seconds to subject!`);
+      } catch (error) {
+        console.error("Error logging time to database:", error);
+      }
+    }
+  };
+
   // --- BACKGROUND TIMER SYNC ---
   useEffect(() => {
-    // 1. Load saved presets so they don't disappear on refresh!
     const savedPresets = localStorage.getItem("customTimerPresets");
     if (savedPresets) setCustomPresets(JSON.parse(savedPresets));
 
-    // 2. Check if a timer was running in the background
     const targetTimeStr = localStorage.getItem("timerTargetTime");
     const savedTask = localStorage.getItem("timerTaskName");
+    const savedDurationStr = localStorage.getItem("timerDuration");
 
-    if (targetTimeStr) {
+    if (targetTimeStr && savedDurationStr) {
       const targetTime = parseInt(targetTimeStr, 10);
+      const savedDuration = parseInt(savedDurationStr, 10);
       const now = Date.now();
       const remainingSeconds = Math.floor((targetTime - now) / 1000);
 
+      setSessionDuration(savedDuration);
+
       if (remainingSeconds > 0) {
-        // Resume the timer seamlessly
         setTimeLeft(remainingSeconds);
         setIsActive(true);
         if (savedTask) setCurrentTask(savedTask);
       } else {
-        // Timer finished while we were away!
+        // Timer finished in the background! Log the time automatically.
+        logStudyTime(savedDuration);
         clearTimerStorage();
         setTimeLeft(0);
         setIsActive(false);
@@ -64,61 +110,77 @@ function Timer() {
   // --- THE TICKING CLOCK ---
   useEffect(() => {
     if (isActive && timeLeft > 0) {
-      intervalRef.current = setInterval(() => {
+      intervalRef.current = window.setInterval(() => {
         setTimeLeft((prevTime) => {
           if (prevTime <= 1) {
+            // Timer finished actively on screen!
+            logStudyTime(sessionDuration);
             clearTimerStorage();
             setIsActive(false);
-            return 0; // Timer hits zero!
+            return 0; 
           }
           return prevTime - 1;
         });
       }, 1000);
     } else {
-      if (intervalRef.current) clearInterval(intervalRef.current);
+      if (intervalRef.current) window.clearInterval(intervalRef.current);
     }
 
     return () => {
-      if (intervalRef.current) clearInterval(intervalRef.current);
+      if (intervalRef.current) window.clearInterval(intervalRef.current);
     };
-  }, [isActive, timeLeft]);
+  }, [isActive, timeLeft, sessionDuration]);
 
   // --- CONTROLS ---
-
   const toggleTimer = () => {
     if (!isActive) {
-      // STARTING: Save the target end time to local storage
       const targetTime = Date.now() + (timeLeft * 1000);
       localStorage.setItem("timerTargetTime", targetTime.toString());
       localStorage.setItem("timerTaskName", currentTask);
+      localStorage.setItem("timerDuration", sessionDuration.toString()); // Save duration to know how much to log
     } else {
-      // PAUSING: Clear the target time so it stops counting down in the background
       clearTimerStorage();
     }
     setIsActive(!isActive);
   };
   
-  const resetTimer = () => {
+const resetTimer = () => {
+    // 1. Calculate how many seconds they actually studied before resetting
+    const timeSpent = sessionDuration - timeLeft;
+    
+    // 2. If they studied for at least 1 second, give them credit!
+    if (timeSpent > 0) {
+      logStudyTime(timeSpent);
+    }
+
     clearTimerStorage();
     setIsActive(false);
     setTimeLeft(25 * 60);
+    setSessionDuration(25 * 60);
     setCurrentTask("Pomodoro");
   };
 
   const applyPreset = (minutes: number, taskName: string) => {
+    // 1. Give them credit for the current session before switching to the new preset
+    const timeSpent = sessionDuration - timeLeft;
+    if (timeSpent > 0) {
+      logStudyTime(timeSpent);
+    }
+
     clearTimerStorage();
     setIsActive(false);
     setTimeLeft(minutes * 60);
+    setSessionDuration(minutes * 60);
     setCurrentTask(taskName);
   };
 
   const clearTimerStorage = () => {
     localStorage.removeItem("timerTargetTime");
     localStorage.removeItem("timerTaskName");
+    localStorage.removeItem("timerDuration");
   };
 
   // --- CUSTOM PRESETS ---
-
   const saveCustomPreset = () => {
     if (customTime !== "" && Number(customTime) > 0 && customName.trim() !== "") {
       const newPreset = { 
@@ -129,7 +191,7 @@ function Timer() {
       
       const updatedPresets = [...customPresets, newPreset];
       setCustomPresets(updatedPresets);
-      localStorage.setItem("customTimerPresets", JSON.stringify(updatedPresets)); // Save permanently!
+      localStorage.setItem("customTimerPresets", JSON.stringify(updatedPresets));
       
       setIsAddingCustom(false);
       setCustomTime("");
@@ -151,6 +213,12 @@ function Timer() {
       
       <main className={`main-content ${isOpen ? 'sidebar-open' : 'sidebar-closed'}`}>
         <div className="timer-wrapper">
+          
+          {/* NEW: Subject Indicator Badge */}
+          <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', background: `${activeSubjectColor}15`, color: activeSubjectColor, padding: '6px 12px', borderRadius: '20px', fontSize: '0.85rem', fontWeight: 'bold', marginBottom: '16px' }}>
+            <BookOpen size={14} /> Tracking for: {activeSubjectName}
+          </div>
+
           <h2 className="task-name">{currentTask}</h2>
           
           <div className="timer-display">

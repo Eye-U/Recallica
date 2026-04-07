@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { AppBar, BottomBar, SideBar, TopBar } from "../../components/Bar";
 import { auth, db } from "../../config/firebase";
 import { UpdateStreak } from "../../config/StudyHandle"; 
-import { collection, getDocs, doc, getDoc } from "firebase/firestore";
+import { collection, getDocs, doc, getDoc, updateDoc, increment } from "firebase/firestore";
 import { ChevronLeft, Brain, CheckCircle, XCircle, RefreshCcw, Flame, Wand2, Play } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import "./Quizzes.css";
@@ -33,6 +33,7 @@ function Quizzes() {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [selectedAnswer, setSelectedAnswer] = useState<string | null>(null);
   const [score, setScore] = useState(0);
+  const [quizStartTime, setQuizStartTime] = useState<number>(0);
 
   useEffect(() => {
     // Grab BOTH IDs to point to the specific lesson
@@ -140,6 +141,7 @@ function Quizzes() {
     setScore(0);
     setSelectedAnswer(null);
     setPhase('playing');
+    setQuizStartTime(Date.now()); 
   };
 
   const handleSelectOption = (option: string) => {
@@ -153,18 +155,28 @@ const nextQuestion = async () => {
       setCurrentIndex(prev => prev + 1);
       setSelectedAnswer(null);
     } else {
-      // 1. Grab the exact ID from local storage to be safe
       const currentSub = localStorage.getItem("CurrentSubject");
+      const uid = auth.currentUser?.uid;
       
-      // 2. Wrap in a try/catch so a streak error never breaks the UI
       try {
-        if (currentSub) {
+        if (currentSub && uid) {
+          // 1. Update the Streak
           await UpdateStreak(currentSub);
+
+          // 2. Calculate time spent and send to Firebase!
+          const timeSpentSeconds = Math.floor((Date.now() - quizStartTime) / 1000);
+          
+          if (timeSpentSeconds > 0) {
+            const subRef = doc(db, "users", uid, "Subjects", currentSub);
+            await updateDoc(subRef, {
+              TotalStudytime: increment(timeSpentSeconds)
+            });
+            console.log(`Auto-logged ${timeSpentSeconds} seconds from Quiz!`);
+          }
         }
       } catch (error) {
-        console.error("Error updating streak:", error);
+        console.error("Error saving quiz results:", error);
       } finally {
-        // 3. FINALLY: No matter what, move to the results screen!
         setPhase('results');
       }
     }

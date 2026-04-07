@@ -2,7 +2,8 @@ import { useState, useEffect } from "react";
 import { AppBar, BottomBar, SideBar, TopBar } from "../../components/Bar";
 import { auth, db } from "../../config/firebase";
 import { CreateFlashCard, DeleteFlashCard } from "../../config/StudyHandle"; 
-import { collection, getDocs, doc, getDoc } from "firebase/firestore";
+// NEW: Added updateDoc and increment!
+import { collection, getDocs, doc, getDoc, updateDoc, increment } from "firebase/firestore";
 import { Plus, ChevronLeft, ChevronRight, RotateCcw, Trash2, X, Brain } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import "./Flashcards.css";
@@ -29,8 +30,10 @@ function Flashcards() {
   const [newQuestion, setNewQuestion] = useState("");
   const [newAnswer, setNewAnswer] = useState("");
 
+  // NEW: The Hidden Stopwatch!
+  const [studyStartTime, setStudyStartTime] = useState<number>(0);
+
   useEffect(() => {
-    // 1. Get BOTH the subject and the lesson we clicked on
     const currentSub = localStorage.getItem("CurrentSubject");
     const currentLes = localStorage.getItem("CurrentLesson");
     
@@ -50,15 +53,12 @@ function Flashcards() {
     if (!uid) return;
 
     try {
-      // Get Subject Color
       const subDoc = await getDoc(doc(db, "users", uid, "Subjects", subId));
       if (subDoc.exists()) setSubjectColor(subDoc.data().color || "#2563eb");
 
-      // Get Lesson Name for the header
       const lesDoc = await getDoc(doc(db, "users", uid, "Subjects", subId, "Lessons", lesId));
       if (lesDoc.exists()) setLessonName(lesDoc.data().name);
 
-      // Get Flashcards from the NEW specific lesson path
       const snapshot = await getDocs(collection(db, "users", uid, "Subjects", subId, "Lessons", lesId, "FlashCards"));
       const cards = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
       setFlashcards(cards);
@@ -66,21 +66,41 @@ function Flashcards() {
       console.error("Error fetching flashcards:", error);
     } finally {
       setLoading(false);
+      // NEW: Start the clock the second the cards finish loading!
+      setStudyStartTime(Date.now());
     }
+  };
+
+  // NEW: The Auto-Logger Function
+  const handleExitToLessons = async () => {
+    const timeSpentSeconds = Math.floor((Date.now() - studyStartTime) / 1000);
+    const uid = auth.currentUser?.uid;
+
+    if (timeSpentSeconds > 0 && subjectId && uid) {
+      try {
+        const subRef = doc(db, "users", uid, "Subjects", subjectId);
+        await updateDoc(subRef, {
+          TotalStudytime: increment(timeSpentSeconds)
+        });
+        console.log(`Auto-logged ${timeSpentSeconds} seconds from Flashcards!`);
+      } catch (error) {
+        console.error("Error logging flashcard time:", error);
+      }
+    }
+    
+    // Finally, actually leave the page
+    navigate('/study/lessons');
   };
 
   const handleAddCard = async () => {
     if (!newQuestion.trim() || !newAnswer.trim() || !subjectId || !lessonId) return;
 
     try {
-      // 2. Pass BOTH IDs to the Leader's updated function
       await CreateFlashCard(subjectId, lessonId, newAnswer.trim(), newQuestion.trim());
-      
       setNewQuestion("");
       setNewAnswer("");
       setShowModal(false);
-      
-      fetchDeckData(subjectId, lessonId); // Refresh deck
+      fetchDeckData(subjectId, lessonId); 
     } catch (error) {
       console.error("Error adding card:", error);
     }
@@ -90,9 +110,7 @@ function Flashcards() {
     if (!subjectId || !lessonId) return;
     if (window.confirm("Delete this flashcard?")) {
       try {
-        // 3. Pass BOTH IDs to delete
         await DeleteFlashCard(subjectId, lessonId, cardId);
-        
         setFlashcards(prev => prev.filter(c => c.id !== cardId));
         if (currentIndex >= flashcards.length - 1) {
           setCurrentIndex(Math.max(0, flashcards.length - 2));
@@ -129,10 +147,10 @@ function Flashcards() {
 
       <main className="fc-main-content">
         
-        {/* NEW BACK BUTTON - Now goes back to the Lessons list! */}
         <div style={{ marginBottom: '16px' }}>
+          {/* UPDATED: Now triggers the save function before leaving! */}
           <button 
-            onClick={() => navigate('/study/lessons')}
+            onClick={handleExitToLessons}
             style={{ display: 'flex', alignItems: 'center', gap: '4px', background: 'transparent', border: 'none', color: '#64748b', fontWeight: 600, cursor: 'pointer', padding: 0 }}
           >
             <ChevronLeft size={18} /> Back to Lessons
