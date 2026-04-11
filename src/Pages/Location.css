@@ -315,3 +315,85 @@
   background-color: #eff6ff;
   box-shadow: 0 4px 12px rgba(37, 99, 235, 0.1);
 }
+
+/* --- MAP AREA & LEAFLET FIXES --- */
+.loc-map-container {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: #e2e8f0; 
+  z-index: 1;
+}
+
+.leaflet-container {
+  z-index: 1;
+}
+
+.loc-recenter-btn {
+  position: absolute;
+  /* THE FIX: `min()` tells it to stop moving up once the sheet passes 45vh! */
+  bottom: calc(min(var(--sheet-height, 45vh), 45vh) + 20px); 
+  right: 20px;
+  background: white;
+  border: none;
+  border-radius: 50%;
+  width: 45px;
+  height: 45px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+  cursor: pointer;
+  
+  /* The button is 1000, the sheet is 1001. 
+     This allows the sheet to cleanly cover the button when pulled to 75% */
+  z-index: 1000; 
+  transition: bottom 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+}
+
+/* --- BOTTOM SHEET DYNAMICS --- */
+.loc-bottom-sheet {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  /* This is the magic line that keeps it synced */
+  height: var(--sheet-height, 45vh); 
+  background: white;
+  border-top-left-radius: 24px;
+  border-top-right-radius: 24px;
+  padding: 0 20px 20px 20px;
+  box-shadow: 0 -10px 40px rgba(0, 0, 0, 0.15);
+  display: flex;
+  flex-direction: column;
+  z-index: 1001; 
+  transition: height 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+}
+/* Instantly remove the animation delay when the user is actively dragging */
+.dragging .loc-bottom-sheet,
+.dragging .loc-recenter-btn {
+  transition: none;
+}
+
+/* --- DRAG HANDLE AREA --- */
+.loc-sheet-drag-area {
+  padding: 16px 0;
+  cursor: grab;
+  /* CRITICAL: Stops the browser from trying to scroll the page while you drag */
+  touch-action: none; 
+}
+
+.loc-sheet-drag-area:active {
+  cursor: grabbing;
+}
+
+.loc-sheet-handle {
+  width: 40px;
+  height: 5px;
+  background: #cbd5e1;
+  border-radius: 10px;
+  margin: 0 auto;
+}
+

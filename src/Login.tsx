@@ -81,6 +81,7 @@ const GoogleIcon: React.FC = () => (
 const Login: React.FC = () => {
   const navigate = useNavigate();
   const [tab, setTab] = useState<"login" | "signup">("signup");
+  
   const [signupData, setSignupData] = useState<SignUpForm>({
     username: "",
     email: "",
@@ -90,9 +91,15 @@ const Login: React.FC = () => {
     email: "",
     password: "",
   });
+  
   const [loading, setLoading] = useState<boolean>(false);
   const [errorMessage, setErrorMessage] = useState<string>("");
 
+  // --- RATE LIMITING STATES ---
+  const [loginAttempts, setLoginAttempts] = useState<number>(0);
+  const [lockoutTimer, setLockoutTimer] = useState<number>(0);
+
+  // Auto-redirect if already logged in
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (user: FirebaseUser | null) => {
       if (user?.email) navigate("/home");
@@ -100,43 +107,80 @@ const Login: React.FC = () => {
     return () => unsubscribe();
   }, [navigate]);
 
+  // --- LOCKOUT TIMER LOGIC ---
+  useEffect(() => {
+    let timer: number;
+    if (lockoutTimer > 0) {
+      timer = window.setInterval(() => {
+        setLockoutTimer((prev) => prev - 1);
+      }, 1000);
+    } else if (lockoutTimer === 0 && loginAttempts >= 5) {
+      // Once the timer hits 0, forgive them and reset attempts
+      setLoginAttempts(0); 
+    }
+    return () => window.clearInterval(timer);
+  }, [lockoutTimer, loginAttempts]);
+
+  // Helper function to handle failed attempts
+  const handleFailure = (error: any, defaultMessage: string) => {
+    const newAttempts = loginAttempts + 1;
+    setLoginAttempts(newAttempts);
+
+    if (newAttempts >= 5 || error.code === 'auth/too-many-requests') {
+      setLockoutTimer(60); // Lock them out for 60 seconds
+      setErrorMessage("Too many failed attempts. Please wait 60 seconds.");
+    } else {
+      setErrorMessage(error.message || defaultMessage);
+    }
+  };
+
   const handleSignUp = async () => {
+    if (lockoutTimer > 0) return; // Prevent action if locked out
+
     const { username, email, password } = signupData;
     if (!username || !email || !password) {
       setErrorMessage("All fields are required.");
       return;
     }
+
     setLoading(true);
     setErrorMessage("");
     try {
       const userCredential = await createUserWithEmailAndPassword(auth, email, password);
       await updateProfile(userCredential.user, { displayName: username });
       await setDoc(doc(db, "users", userCredential.user.uid), { username, email });
+      setLoginAttempts(0); // Reset on success!
     } catch (err: any) {
-      setErrorMessage(err.message || "Sign up failed.");
+      handleFailure(err, "Sign up failed.");
     } finally {
       setLoading(false);
     }
   };
 
   const handleLogin = async () => {
+    if (lockoutTimer > 0) return; // Prevent action if locked out
+
     const { email, password } = loginData;
     if (!email || !password) {
       setErrorMessage("All fields are required.");
       return;
     }
+
     setLoading(true);
     setErrorMessage("");
     try {
       await signInWithEmailAndPassword(auth, email, password);
+      setLoginAttempts(0); // Reset on success!
     } catch (err: any) {
-      setErrorMessage(err.message || "Login failed.");
+      handleFailure(err, "Login failed.");
     } finally {
       setLoading(false);
     }
   };
 
   const handleGoogle = async () => {
+    if (lockoutTimer > 0) return; // Prevent action if locked out
+
     setLoading(true);
     setErrorMessage("");
     try {
@@ -149,8 +193,9 @@ const Login: React.FC = () => {
         },
         { merge: true }
       );
-    } catch {
-      setErrorMessage("Google sign-in failed.");
+      setLoginAttempts(0); // Reset on success!
+    } catch (err: any) {
+      handleFailure(err, "Google sign-in failed.");
     } finally {
       setLoading(false);
     }
@@ -230,9 +275,15 @@ const Login: React.FC = () => {
             <button
               className="primary-btn"
               onClick={handleSignUp}
-              disabled={loading}
+              disabled={loading || lockoutTimer > 0}
             >
-              {loading ? <span className="btn-spinner" /> : <>Create account <ArrowRight size={16} /></>}
+              {lockoutTimer > 0 ? (
+                `Try again in ${lockoutTimer}s`
+              ) : loading ? (
+                <span className="btn-spinner" />
+              ) : (
+                <>Create account <ArrowRight size={16} /></>
+              )}
             </button>
           </div>
         ) : (
@@ -256,9 +307,15 @@ const Login: React.FC = () => {
             <button
               className="primary-btn"
               onClick={handleLogin}
-              disabled={loading}
+              disabled={loading || lockoutTimer > 0}
             >
-              {loading ? <span className="btn-spinner" /> : <>Log in <ArrowRight size={16} /></>}
+              {lockoutTimer > 0 ? (
+                `Try again in ${lockoutTimer}s`
+              ) : loading ? (
+                <span className="btn-spinner" />
+              ) : (
+                <>Log in <ArrowRight size={16} /></>
+              )}
             </button>
           </div>
         )}
@@ -271,14 +328,20 @@ const Login: React.FC = () => {
         </div>
 
         {/* Google */}
-        <button className="google-btn" onClick={handleGoogle} disabled={loading}>
+        <button 
+          className="google-btn" 
+          onClick={handleGoogle} 
+          disabled={loading || lockoutTimer > 0}
+        >
           <GoogleIcon />
           Continue with Google
         </button>
 
         {/* Error */}
         {errorMessage && (
-          <p className="error-message" role="alert">{errorMessage}</p>
+          <p className="error-message" role="alert" style={{ color: '#ef4444', textAlign: 'center', marginTop: '12px', fontSize: '0.9rem', fontWeight: 500 }}>
+            {errorMessage}
+          </p>
         )}
 
         {/* Footer */}

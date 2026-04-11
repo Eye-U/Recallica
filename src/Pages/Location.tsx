@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { AppBar, BottomBar, SideBar } from "../components/Bar";
 import { Search, Filter, Navigation, BookOpen, Coffee, TreePine, MapPin, Star } from "lucide-react";
 import { MapContainer, TileLayer, Marker, Popup, useMap } from "react-leaflet";
@@ -24,7 +24,7 @@ const userIcon = L.divIcon({
   iconAnchor: [10, 10],
 });
 
-// 3. NEW: Red SVG Pin for the Selected Place
+// 3. Red SVG Pin for the Selected Place
 const activeIcon = L.divIcon({
   className: "loc-active-svg",
   html: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="#dc2626" stroke="#ffffff" stroke-width="1.5" width="36px" height="36px"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/></svg>`,
@@ -33,22 +33,20 @@ const activeIcon = L.divIcon({
   popupAnchor: [0, -36]
 });
 
-// NEW: Smart Map Controller that flies to the clicked location
 function MapController({ userPos, selectedPos }: { userPos: [number, number], selectedPos: [number, number] | null }) {
   const map = useMap();
   useEffect(() => {
     if (selectedPos) {
-      map.flyTo(selectedPos, 17, { duration: 1.2 }); // Zoom in closer on the place
+      map.flyTo(selectedPos, 17, { duration: 1.2 });
     } else {
-      map.flyTo(userPos, 15, { duration: 1.2 }); // Fall back to user
+      map.flyTo(userPos, 15, { duration: 1.2 });
     }
   }, [userPos, selectedPos, map]);
   return null;
 }
 
-// Math helper to calculate distance
 function calculateDistance(lat1: number, lon1: number, lat2: number, lon2: number) {
-  const R = 3958.8; // Earth radius in miles
+  const R = 3958.8; 
   const dLat = (lat2 - lat1) * (Math.PI / 180);
   const dLon = (lon2 - lon1) * (Math.PI / 180);
   const a = 
@@ -66,9 +64,45 @@ function Locations() {
   
   const [places, setPlaces] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(false);
-  
-  // NEW: State to track which card is clicked
   const [activePlaceId, setActivePlaceId] = useState<number | null>(null);
+
+  // --- NEW: DRAGGABLE BOTTOM SHEET LOGIC ---
+  const [sheetHeight, setSheetHeight] = useState(45); // Starts at 45% of screen height
+  const [isDragging, setIsDragging] = useState(false);
+  const startY = useRef(0);
+  const startHeight = useRef(0);
+
+  const handlePointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
+    setIsDragging(true);
+    startY.current = e.clientY;
+    startHeight.current = sheetHeight;
+    e.currentTarget.setPointerCapture(e.pointerId); // Locks the touch to this element!
+  };
+
+const handlePointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (!isDragging) return;
+    const deltaY = e.clientY - startY.current;
+    const deltaVh = (deltaY / window.innerHeight) * 100;
+    let newHeight = startHeight.current - deltaVh;
+
+    // BOUNDS: Cap it at 75 so it doesn't cover your header!
+    if (newHeight < 15) newHeight = 15;
+    if (newHeight > 75) newHeight = 75; 
+    
+    setSheetHeight(newHeight);
+  };
+
+  const handlePointerUp = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (!isDragging) return;
+    setIsDragging(false);
+    e.currentTarget.releasePointerCapture(e.pointerId);
+
+    // SNAP LOGIC: Synced with the new 75 max
+    if (sheetHeight < 30) setSheetHeight(15);      // Minimized Map view
+    else if (sheetHeight > 60) setSheetHeight(75); // Full List view
+    else setSheetHeight(45);                       // Half-and-Half view
+  };
+  // -----------------------------------------
 
   useEffect(() => {
     if ("geolocation" in navigator) {
@@ -120,7 +154,7 @@ function Locations() {
             id: el.id,
             name: el.tags?.name || `Unnamed ${type}`,
             type: type,
-            distance: calculateDistance(lat, lon, placeLat, placeLon), // Keep as number for sorting
+            distance: calculateDistance(lat, lon, placeLat, placeLon),
             position: [placeLat, placeLon],
             seats: `${Math.floor(Math.random() * 30) + 10} seats`,
             rating: (Math.random() * (5.0 - 4.0) + 4.0).toFixed(1),
@@ -130,7 +164,6 @@ function Locations() {
         });
 
         finalPlaces = formattedPlaces.filter((p: any) => !p.name.includes("Unnamed"));
-
       } catch (error) {
         console.warn("API limit reached or failed. Relying on fallback data.");
       } finally {
@@ -141,15 +174,11 @@ function Locations() {
              { id: 903, name: "Community Park", type: "Park", distance: "0.8", position: [lat + 0.001, lon - 0.004], seats: "Outdoor", rating: "4.2", status: "OPEN", tags: ["Nature"] }
            ];
         }
-
-        // NEW: Sort places by distance (closest first)
         finalPlaces.sort((a, b) => parseFloat(a.distance) - parseFloat(b.distance));
-
         setPlaces(finalPlaces);
         setIsLoading(false);
       }
     };
-
     fetchPlaces();
   }, [userPos]);
 
@@ -159,7 +188,6 @@ function Locations() {
     return matchesFilter && matchesSearch;
   });
 
-  // Find the exact coordinates of the clicked place
   const selectedPlaceData = places.find(p => p.id === activePlaceId);
   const mapFocusPos = selectedPlaceData ? (selectedPlaceData.position as [number, number]) : null;
 
@@ -168,26 +196,26 @@ function Locations() {
       <AppBar onToggle={() => setIsOpen(!isOpen)} title="Study Spots" />
       <SideBar isOpen={isOpen} onClose={() => setIsOpen(false)} />
 
-      <main className="loc-main-content">
+      {/* NEW: Passed CSS variables and dragging class dynamically */}
+      <main 
+        className={`loc-main-content ${isDragging ? "dragging" : ""}`}
+        style={{ ["--sheet-height" as any]: `${sheetHeight}vh` }}
+      >
         <div className="loc-map-container">
           <MapContainer center={userPos} zoom={15} zoomControl={false} style={{ height: "100%", width: "100%" }}>
             <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
-            
-            {/* NEW: Smart Controller handles the flying animation */}
             <MapController userPos={userPos} selectedPos={mapFocusPos} />
             
-            {/* User Location */}
             <Marker position={userPos} icon={userIcon} zIndexOffset={1000}>
               <Popup><strong>You are here</strong></Popup>
             </Marker>
 
-            {/* Places Markers with dynamic icon logic */}
             {filteredPlaces.map(place => (
               <Marker 
                 key={place.id} 
                 position={place.position as [number, number]}
                 icon={activePlaceId === place.id ? activeIcon : DefaultIcon}
-                zIndexOffset={activePlaceId === place.id ? 999 : 0} // Brings red pin to the front
+                zIndexOffset={activePlaceId === place.id ? 999 : 0}
               >
                 <Popup>
                   <strong>{place.name}</strong> <br /> {place.type}
@@ -210,7 +238,7 @@ function Locations() {
           </div>
 
           <button className="loc-recenter-btn" onClick={() => {
-            setActivePlaceId(null); // Clear selection to fly back to user
+            setActivePlaceId(null);
             if ("geolocation" in navigator) {
               navigator.geolocation.getCurrentPosition((pos) => {
                 setUserPos([pos.coords.latitude, pos.coords.longitude]);
@@ -221,8 +249,19 @@ function Locations() {
           </button>
         </div>
 
+        {/* BOTTOM SHEET */}
         <div className="loc-bottom-sheet">
-          <div className="loc-sheet-handle"></div>
+          {/* DRAG AREA */}
+          <div 
+            className="loc-sheet-drag-area"
+            onPointerDown={handlePointerDown}
+            onPointerMove={handlePointerMove}
+            onPointerUp={handlePointerUp}
+            onPointerCancel={handlePointerUp} // Safety net
+          >
+            <div className="loc-sheet-handle"></div>
+          </div>
+
           <div className="loc-sheet-header">
             <div>
               <h2 className="loc-sheet-title">Nearby Places</h2>
@@ -240,7 +279,7 @@ function Locations() {
                 className={`loc-filter-pill ${activeFilter === f ? "active" : ""}`} 
                 onClick={() => {
                   setActiveFilter(f);
-                  setActivePlaceId(null); // Reset zoom when changing filters
+                  setActivePlaceId(null);
                 }}
               >
                 {f}
@@ -255,9 +294,12 @@ function Locations() {
             {!isLoading && filteredPlaces.map(place => (
               <div 
                 key={place.id} 
-                // Add the active class if clicked
                 className={`loc-place-card ${activePlaceId === place.id ? "active-card" : ""}`}
-                onClick={() => setActivePlaceId(place.id)} // Trigger the fly animation!
+                onClick={() => {
+                  setActivePlaceId(place.id);
+                  // NEW: Automatically slide the sheet down so they can see the map!
+                  if (sheetHeight > 60) setSheetHeight(45);
+                }}
               >
                 <div className="loc-place-icon">
                   {place.type === "Library" && <BookOpen size={24} color="#2563eb" />}
