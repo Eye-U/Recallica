@@ -35,12 +35,12 @@
 /* --- FLOATING SEARCH BAR --- */
 .loc-search-overlay {
   position: absolute;
-  top: 15px;
+  top: 80px; /* THE FIX: Pushed down to clear the TopBar! */
   left: 0;
   width: 100%;
   padding: 0 20px;
   box-sizing: border-box;
-  z-index: 1000; /* Must be higher than Leaflet */
+  z-index: 1000; 
 }
 
 .loc-search-bar {
@@ -356,10 +356,9 @@
 /* --- BOTTOM SHEET DYNAMICS --- */
 .loc-bottom-sheet {
   position: absolute;
-  bottom: 0;
+  bottom: 70px; /* THE FIX: Push it up above the BottomBar! */
   left: 0;
   width: 100%;
-  /* This is the magic line that keeps it synced */
   height: var(--sheet-height, 45vh); 
   background: white;
   border-top-left-radius: 24px;
@@ -396,4 +395,6 @@
   border-radius: 10px;
   margin: 0 auto;
 }
+
+
 
